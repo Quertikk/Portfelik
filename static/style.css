@@ -46,6 +46,12 @@ th { color: var(--muted); font-weight: 500; font-size: .85rem; }
 .num { text-align: right; white-space: nowrap; }
 .empty { color: var(--muted); text-align: center; }
 
+.badge { font-size: .7rem; font-weight: 500; color: var(--muted); background: var(--bg);
+         border: 1px solid var(--border); border-radius: 999px; padding: 2px 8px; margin-left: 6px; vertical-align: middle; }
+.soon ul { margin: 0; padding-left: 0; list-style: none; color: var(--muted); }
+.soon li { padding: 6px 0; }
+.soon em { font-style: normal; font-size: .85rem; }
+
 .flash { padding: 10px 14px; border-radius: 8px; margin-bottom: 12px; }
 .flash.ok { background: var(--accent-soft); }
 .flash.error { background: #fde8e7; color: var(--danger); }

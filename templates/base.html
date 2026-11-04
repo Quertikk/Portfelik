@@ -8,7 +8,7 @@
 </head>
 <body>
   <header class="topbar">
-    <a class="logo" href="{{ url_for('index') }}">👛 Portfelik</a>
+    <a class="logo" href="{{ url_for('index') }}">👛 Portfelik <span class="badge">wersja 0.1 · prototyp</span></a>
     <form method="post" action="{{ url_for('switch_user') }}" class="who">
       <label for="user_id">Jestem:</label>
       <select id="user_id" name="user_id" onchange="this.form.submit()">
