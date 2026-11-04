@@ -8,9 +8,9 @@ Projekt zespołowy, Uniwersytet im. Adama Mickiewicza w Poznaniu, 2026/2027.
 
 | Osoba | Rola w Scrum | Zakres |
 |---|---|---|
-| Valentyn | Lider (ScrumMaster) | Organizacja pracy, kontakt z prowadzącym, backlog sprintu, architektura i wdrożenie aplikacji |
+| Valentyn | Lider (ScrumMaster) | Organizacja pracy, kontakt z prowadzącym, backlog sprintu, architektura aplikacji i baza danych |
 | Daria | Właściciel produktu | Wymagania i ich priorytety, koncepcja funkcji, akceptacja wykonanych zadań, instrukcja użytkownika |
-| Filip Kellner | Zespół | Testy, scenariusze testowe, ergonomia interfejsu, opis techniczny |
+| Filip Kellner | Zespół | Logowanie i wdrożenie na serwer, testy, scenariusze testowe, opis techniczny |
 
 **Narzędzia AI wykorzystywane w projekcie**
 

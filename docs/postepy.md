@@ -26,12 +26,13 @@ Po każdym spotkaniu dopisujemy: co zostało zrobione (kto co zrobił), jakie by
 - **Zmiana tematu:** poprzedni temat został odrzucony, przez co sprint 0 był krótszy. Zakres ograniczyliśmy do funkcji o wysokim priorytecie.
 - **Za dużo pomysłów na dostępny czas:** funkcje podzieliliśmy na priorytety; grywalizacja i Telegram są na końcu listy.
 - **Brak dostępu do danych bankowych:** integracja z bankami wymaga licencji (PSD2). Zamiast tego wydatki dodaje się ręcznie albo ze zdjęcia paragonu przez AI.
-- **Logowanie:** w pierwszej wersji użytkownika wybiera się z listy; pełne logowanie w sprincie 1.
+- **Logowanie i serwer:** w pierwszej wersji użytkownika wybiera się z listy, a aplikacja działa tylko lokalnie. Potrzebne logowanie z hasłem i serwer dostępny z telefonu.
+- **Baza danych:** SQLite wystarcza na start; do sprawdzenia, czy poradzi sobie z wieloma użytkownikami naraz, czy przejść na PostgreSQL.
 - **Błąd uruchomienia na Windows:** komunikat z polskimi znakami w konsoli (kodowanie cp1252) powodował awarię przy starcie. Poprawione: komunikat w konsoli bez polskich znaków.
 - **Widok na telefonie:** formularz dodawania wydatku wychodził poza ekran. Poprawione w stylach (CSS).
 
 ### Plan na kolejny tydzień
 
-- Specyfikacja wymagań funkcjonalnych i niefunkcjonalnych (Daria).
-- Logowanie i rejestracja użytkowników (Valentyn).
-- Scenariusze testowe dla pierwszej wersji (Filip).
+- Specyfikacja wymagań i makiety ekranów zatwierdzania i limitów (Daria).
+- Baza danych pod użytkowników i wspólne portfele; decyzja: SQLite czy PostgreSQL (Valentyn).
+- Logowanie z hasłem i wybór serwera do wdrożenia aplikacji (Filip).

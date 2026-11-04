@@ -63,14 +63,16 @@ gantt
 | 1. Analiza | 1.1 Koncepcja funkcji aplikacji | Daria | 2 dni | Daria, Valentyn |
 | | 1.2 Backlog i priorytety | Daria | 1 dzień | Daria, Valentyn |
 | | 1.3 Specyfikacja wymagań (F/NF) | Daria | 2 dni | Daria, Filip |
+| | 1.4 Makiety nowych ekranów (zatwierdzanie, limity) | Daria | 1 dzień | Daria, Valentyn |
 | 2. Organizacja | 2.1 Zmiana tematu, kontakt z prowadzącym | Valentyn | 1 dzień | Valentyn |
 | | 2.2 Role, repozytorium, plan sprintów | Valentyn | 1 dzień | Valentyn, Daria, Filip |
 | 3. Aplikacja | 3.1 Pierwsza wersja: portfele, wydatki, podsumowanie | Valentyn | 3 dni | Valentyn, Claude |
-| | 3.2 Logowanie i wspólny portfel | Valentyn | 3 dni | Valentyn, Claude |
-| | 3.3 Zatwierdzanie wydatków i limity | Valentyn | 3,5 dnia | Valentyn, Daria, Claude |
-| | 3.4 AI: rozpoznawanie paragonów | Valentyn | 3 dni | Valentyn, Claude |
-| | 3.5 Wykresy, subskrypcje | Valentyn | 2,5 dnia | Valentyn, Claude |
-| | 3.6 Skarbonka, osiągnięcia | Valentyn | 2,5 dnia | Valentyn, Daria, Claude |
+| | 3.2 Baza danych pod użytkowników i wspólne portfele | Valentyn | 1,5 dnia | Valentyn, Claude |
+| | 3.3 Logowanie i wdrożenie aplikacji na serwer | Filip | 2,5 dnia | Filip, Valentyn, Claude |
+| | 3.4 Zatwierdzanie wydatków i limity | Valentyn | 3,5 dnia | Valentyn, Daria, Claude |
+| | 3.5 AI: rozpoznawanie paragonów | Valentyn | 3 dni | Valentyn, Claude |
+| | 3.6 Wykresy, subskrypcje | Valentyn | 2,5 dnia | Valentyn, Claude |
+| | 3.7 Skarbonka, osiągnięcia | Valentyn | 2,5 dnia | Valentyn, Daria, Claude |
 | 4. Jakość | 4.1 Przegląd interfejsu (ergonomia) | Filip | ciągle | Filip, Daria |
 | | 4.2 Scenariusze testowe | Filip | 2 dni | Filip |
 | | 4.3 Testy i zgłaszanie błędów | Filip | ciągle | Filip, Valentyn |
@@ -88,9 +90,11 @@ gantt
 | 1.1 Koncepcja funkcji | C | R | I |
 | 1.2 Backlog i priorytety | C | R | I |
 | 1.3 Specyfikacja wymagań | C | R | C |
+| 1.4 Makiety nowych ekranów | C | R | I |
 | 2.1 Zmiana tematu | R | I | I |
 | 2.2 Role, repozytorium, plan | R | C | C |
-| 3.1–3.6 Aplikacja | R | C | I |
+| 3.1–3.2, 3.4–3.7 Aplikacja | R | C | I |
+| 3.3 Logowanie i wdrożenie na serwer | C | I | R |
 | 4.1 Przegląd interfejsu | I | C | R |
 | 4.2 Scenariusze testowe | C | C | R |
 | 4.3 Testy | C | I | R |
