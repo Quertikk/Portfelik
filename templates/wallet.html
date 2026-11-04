@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}{{ wallet.name }} · Portfelik{% endblock %}
+{% block content %}
+<nav class="tabs">
+  <a href="{{ url_for('wallet', kind='personal', m=month.strftime('%Y-%m')) }}"
+     class="{% if kind == 'personal' %}active{% endif %}">Mój portfel</a>
+  <a href="{{ url_for('wallet', kind='shared', m=month.strftime('%Y-%m')) }}"
+     class="{% if kind == 'shared' %}active{% endif %}">Wspólny portfel</a>
+</nav>
+
+<section class="month">
+  <a href="{{ url_for('wallet', kind=kind, m=prev_m) }}" aria-label="Poprzedni miesiąc">‹</a>
+  <h1>{{ wallet.name if kind == 'shared' else 'Moje wydatki' }} · {{ month_name }}</h1>
+  <a href="{{ url_for('wallet', kind=kind, m=next_m) }}" aria-label="Następny miesiąc">›</a>
+</section>
+
+<section class="cards">
+  <div class="card stat">
+    <span class="label">Wydano w tym miesiącu</span>
+    <span class="big">{{ total | zl }}</span>
+    {% if prev_total %}
+      {% set diff = ((total - prev_total) * 100 / prev_total) | round | int %}
+      <span class="hint {{ 'up' if diff > 0 else 'down' }}">
+        {{ '+' if diff > 0 else '' }}{{ diff }}% względem poprzedniego miesiąca ({{ prev_total | zl }})
+      </span>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <span class="label">Według kategorii</span>
+    {% for c in by_category %}
+      <div class="bar-row">
+        <span>{{ c.icon }} {{ c.name }}</span><span>{{ c.total | zl }}</span>
+      </div>
+      <div class="bar"><div style="width: {{ (c.total * 100 / total) | round | int }}%"></div></div>
+    {% else %}
+      <p class="empty">Brak wydatków w tym miesiącu.</p>
+    {% endfor %}
+  </div>
+
+  {% if kind == 'shared' %}
+  <div class="card">
+    <span class="label">Kto ile zapłacił</span>
+    {% for p in by_person %}
+      <div class="bar-row"><span>{{ p.name }}</span><span>{{ p.total | zl }}</span></div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</section>
+
+<section class="card">
+  <span class="label">Dodaj wydatek</span>
+  <form method="post" action="{{ url_for('add_expense', kind=kind) }}" class="add">
+    <input name="amount" inputmode="decimal" placeholder="Kwota, np. 12,50" required>
+    <select name="category_id" required>
+      {% for c in categories %}<option value="{{ c.id }}">{{ c.icon }} {{ c.name }}</option>{% endfor %}
+    </select>
+    <input name="description" placeholder="Opis (opcjonalnie)" maxlength="200">
+    <input name="spent_on" type="date" value="{{ today }}">
+    <button type="submit">Dodaj</button>
+  </form>
+</section>
+
+<section class="card">
+  <span class="label">Lista wydatków</span>
+  <table>
+    <thead><tr><th>Data</th><th>Kategoria</th><th>Opis</th>{% if kind == 'shared' %}<th>Kto</th>{% endif %}<th class="num">Kwota</th><th></th></tr></thead>
+    <tbody>
+    {% for e in expenses %}
+      <tr>
+        <td>{{ e.spent_on[8:10] }}.{{ e.spent_on[5:7] }}</td>
+        <td>{{ e.icon }} {{ e.category }}</td>
+        <td>{{ e.description }}</td>
+        {% if kind == 'shared' %}<td>{{ e.who }}</td>{% endif %}
+        <td class="num">{{ e.amount | zl }}</td>
+        <td>
+          {% if e.user_id == g.user.id %}
+          <form method="post" action="{{ url_for('delete_expense', expense_id=e.id) }}"
+                onsubmit="return confirm('Usunąć ten wydatek?')">
+            <button class="link" title="Usuń">✕</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="6" class="empty">Brak wydatków w tym miesiącu.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}
