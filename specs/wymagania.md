@@ -26,7 +26,7 @@ Priorytet: W (wysoki), Ś (średni), N (niski).
 | F6 | Jako użytkownik rejestruję się i loguję | Rejestracja: nazwa, e-mail, hasło min. 8 znaków; hasło zapisane jako skrót; błędne logowanie nie ujawnia, czy zły jest e-mail czy hasło; wylogowanie; bez logowania brak dostępu do portfeli; przełącznik `/user` usunięty | W | 1 | Filip |
 | F7 | Jako użytkownik tworzę wspólny portfel i zapraszam osoby | Kreator portfela; zaproszenie linkiem lub kodem z terminem ważności; zaproszona osoba dołącza po zalogowaniu; użytkownik może należeć do wielu wspólnych portfeli; adres portfela zawiera jego identyfikator **(zmiana)** | W | 1 | Valentyn |
 | F8 | Jako członek wspólnego portfela zatwierdzam większe wydatki | Domyślny próg 200 zł, zmienialny przez właściciela portfela; wydatek powyżej progu ma status „”; zatwierdzić lub odrzucić może tylko inny członek niż autor; wydatek odrzucony zostaje w historii; oczekujące nie wchodzą do sum miesiąca (do potwierdzenia przez Właściciela produktu) | W | 1 | Valentyn |
-| F9 | Jako użytkownik dodaję komentarz do wydatku | Komentarz do 200 znaków, widoczny na liście i przy zatwierdzaniu | Ś | 1 | Filip |
+| F9 | Jako użytkownik dodaję komentarz do wydatku | Komentarz do 200 znaków, widoczny na liście (także na telefonie) i przy zatwierdzaniu | Ś | 1 | Filip |
 | F10 | Jako użytkownik ustawiam limity kategorii i dostaję ostrzeżenie | Limit miesięczny na kategorię w portfelu; ostrzeżenie przy 80% limitu; tryb „” włącza się, gdy wydano ponad 80% sumy limitów przed końcem miesiąca (definicja do potwierdzenia przez Właściciela produktu) | W | 1 | Valentyn |
 | F11 | **AI:** jako użytkownik dodaję wydatek ze zdjęcia paragonu | Wgranie JPG lub PNG do 5 MB; model zwraca kwotę, datę, sklep i kategorię; formularz jest wypełniony i edytowalny, wydatek zapisuje się dopiero po zatwierdzeniu; błąd odczytu daje komunikat i ręczne wprowadzanie; kwota odczytana poprawnie na co najmniej 8 z 10 paragonów testowych; zdjęcie nie jest zapisywane na dysku (NF6) | W | 2 | Valentyn |
 | F12 | Jako użytkownik widzę wykres wydatków i porównanie ze średnią z 3 miesięcy | Wykres kategorii miesiąca ze znacznikiem średniej z 3 poprzednich miesięcy; czytelny na telefonie | Ś | 2 | Filip |
@@ -42,7 +42,7 @@ Priorytet: W (wysoki), Ś (średni), N (niski).
 
 | ID | Wymaganie | Miara sprawdzenia | Pri. | Sprint |
 |---|---|---|---|---|
-| NF1 | Interfejs po polsku, czytelny na telefonie i komputerze | Przegląd na ekranie 360 px i 1366 px, brak poziomego przewijania | W | 0 (do testów) |
+| NF1 | Interfejs po polsku, czytelny na telefonie i komputerze | Przegląd na ekranie 360 px i 1366 px, brak poziomego przewijania; opis i komentarz wydatku są widoczne także na ekranie 360 px | W | 0 (do testów) |
 | NF2 | Kwoty w groszach (bez błędów zaokrągleń) | Test jednostkowy `parse_amount` i formatowania | W | 0 (zrobione) |
 | NF3 | Uruchomienie lokalne jednym plikiem | `start.bat` uruchamia aplikację na czystym Windows z Pythonem 3.10+ | Ś | 0 (zrobione) |
 | NF4 | Hasła jako skrót; użytkownik widzi tylko swoje portfele | Test: użytkownik A dostaje 404 dla portfela użytkownika B | W | 1 |

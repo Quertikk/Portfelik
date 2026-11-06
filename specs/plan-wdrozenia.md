@@ -81,6 +81,7 @@ Skróty: **V** Valentyn, **D** Daria, **F** Filip.
 
 ### F9 Komentarz i F19 Edycja (F, po 0,5 dnia, po F6)
 - [ ] Migracja: `expenses.comment`; pole w formularzu i na liście (F9)
+- [ ] Opis i komentarz widoczne na ekranie 360 px: usunąć ukrywanie trzeciej kolumny w `@media (max-width: 700px)` w `static/style.css` i pokazać opis jako drugą linię pod kategorią (NF1)
 - [ ] Funkcja walidacji formularza wydatku wyciągnięta z `add_expense` i użyta w dodawaniu oraz edycji
 - [ ] `GET/POST /wydatek/<id>/edytuj` tylko dla autora (F19)
 - [ ] Edycja kwoty zatwierdzonego wydatku powyżej progu cofa status do `pending`
@@ -173,7 +174,7 @@ Skróty: **V** Valentyn, **D** Daria, **F** Filip.
 
 ### Testy i poprawki
 - [ ] NF7: skrypt generuje 1000 wydatków, pomiar ładowania strony poniżej 1 s (F)
-- [ ] NF1: przegląd wszystkich ekranów na 360 px i 1366 px, brak poziomego przewijania (F, D)
+- [ ] NF1: przegląd wszystkich ekranów na 360 px i 1366 px, brak poziomego przewijania, opis i komentarz wydatku widoczne na telefonie (F, D)
 - [ ] NF5: test użyteczności dodania wydatku w maksymalnie 3 kliknięciach (D)
 - [ ] Uzupełnione testy uprawnień i zatwierdzania, pokrycie logiki w `budget.py`, `receipts.py`, `auth.py` (F)
 - [ ] Wszystkie błędy ze zgłoszeń zamknięte lub świadomie odroczone z uzasadnieniem
