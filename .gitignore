@@ -4,3 +4,4 @@ __pycache__/
 .venv/
 secret_key.txt
 .pytest_cache/
+backups/

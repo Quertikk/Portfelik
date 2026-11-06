@@ -103,4 +103,6 @@ th { color: var(--muted); font-weight: 500; font-size: .85rem; }
 @media (max-width: 700px) {
   .add { grid-template-columns: 1fr 1fr; }
   .add button { grid-column: span 2; }
+  th, td { padding: 8px 3px; }
+  .row-actions { flex-direction: column; }
 }
