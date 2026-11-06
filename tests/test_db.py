@@ -50,3 +50,11 @@ def test_init_db_without_demo_has_categories_but_no_users(tmp_path, monkeypatch)
     with db.connect() as conn:
         assert conn.execute("SELECT COUNT(*) FROM users").fetchone()[0] == 0
         assert conn.execute("SELECT COUNT(*) FROM categories").fetchone()[0] == len(db.CATEGORIES)
+
+
+def test_demo_wallet_ids_match_conftest(app):
+    from conftest import WALLET
+    rows = db.connect().execute(
+        "SELECT w.id, COALESCE(CASE w.kind WHEN 'personal' THEN u.name END, 'shared') AS who"
+        " FROM wallets w LEFT JOIN users u ON u.id = w.owner_id").fetchall()
+    assert {r["who"]: r["id"] for r in rows} == WALLET

@@ -41,3 +41,7 @@ def client(app):
 def query(sql, *args):
     with db.connect() as conn:
         return conn.execute(sql, args).fetchall()
+
+
+# Identyfikatory portfeli demo wynikają z kolejności w db._seed (sprawdza je test_db).
+WALLET = {"Valentyn": 1, "Daria": 2, "Filip": 3, "shared": 4}

@@ -48,6 +48,15 @@ button.link { min-height: 0; min-width: 44px; }
 .stack label { font-size: .9rem; font-weight: 600; margin-top: 6px; }
 .stack button { margin-top: 12px; }
 .muted { color: var(--muted); font-size: .9rem; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.wide { width: 100%; margin: 6px 0 10px; }
+.inline { display: flex; gap: 8px; flex-wrap: wrap; }
+.inline input { flex: 1 1 180px; min-width: 0; }
+
+.tabs { flex-wrap: wrap; }
+.tabs a { flex: 1 1 140px; }
+.new-wallet { margin-bottom: 12px; }
+.new-wallet summary { cursor: pointer; color: var(--accent); font-weight: 600; padding: 10px 0; min-height: 44px; }
 button.link:hover { color: var(--danger); }
 
 table { width: 100%; border-collapse: collapse; }

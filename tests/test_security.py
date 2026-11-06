@@ -40,25 +40,25 @@ def test_login_without_csrf_token_is_rejected(app):
 
 def test_post_without_csrf_token_is_rejected(app):
     client = csrf_client(app)
-    resp = client.post("/portfel/personal/dodaj", data={"amount": "5", "category_id": 1})
+    resp = client.post("/portfel/3/dodaj", data={"amount": "5", "category_id": 1})
     assert resp.status_code == 400
 
 
 def test_forms_carry_csrf_token(app):
-    html = csrf_client(app).get("/portfel/personal").get_data(as_text=True)
+    html = csrf_client(app).get("/portfel/3").get_data(as_text=True)
     # wylogowanie, formularz dodawania i po jednym formularzu usuwania na własny wydatek
     assert len(TOKEN.findall(html)) >= 2
 
 
 def test_post_with_csrf_token_is_accepted(app):
     client = csrf_client(app)
-    token = TOKEN.search(client.get("/portfel/personal").get_data(as_text=True)).group(1)
-    resp = client.post("/portfel/personal/dodaj",
+    token = TOKEN.search(client.get("/portfel/3").get_data(as_text=True)).group(1)
+    resp = client.post("/portfel/3/dodaj",
                        data={"amount": "5", "category_id": 1, "csrf_token": token})
     assert resp.status_code == 302
 
 
 def test_infinite_amount_does_not_crash(client):
     for amount in ("inf", "nan", "1e999", "-5", "0"):
-        resp = client.post("/portfel/personal/dodaj", data={"amount": amount, "category_id": 1})
+        resp = client.post("/portfel/3/dodaj", data={"amount": amount, "category_id": 1})
         assert resp.status_code == 302  # komunikat błędu, nie 500

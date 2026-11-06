@@ -30,6 +30,7 @@ app.register_blueprint(auth_bp)
 
 MONTHS = ["styczeń", "luty", "marzec", "kwiecień", "maj", "czerwiec", "lipiec",
           "sierpień", "wrzesień", "październik", "listopad", "grudzień"]
+INVITE_DAYS = 7
 
 
 @app.template_filter("zl")
@@ -81,15 +82,18 @@ def close_db(exc):
         conn.close()
 
 
-def get_wallet(kind):
-    if kind == "personal":
-        sql = "SELECT * FROM wallets WHERE kind = 'personal' AND owner_id = ?"
-    elif kind == "shared":
-        sql = ("SELECT w.* FROM wallets w JOIN wallet_members m ON m.wallet_id = w.id"
-               " WHERE w.kind = 'shared' AND m.user_id = ? ORDER BY w.id")
-    else:
-        abort(404)
-    wallet = g.conn.execute(sql, (g.user["id"],)).fetchone()
+def user_wallets():
+    """Portfele zalogowanego użytkownika: najpierw osobisty, potem wspólne."""
+    return g.conn.execute(
+        "SELECT w.* FROM wallets w JOIN wallet_members m ON m.wallet_id = w.id"
+        " WHERE m.user_id = ? ORDER BY w.kind = 'shared', w.id", (g.user["id"],)).fetchall()
+
+
+def get_wallet(wallet_id):
+    """Portfel tylko dla członka; obcy portfel daje 404, jakby nie istniał (NF4)."""
+    wallet = g.conn.execute(
+        "SELECT w.* FROM wallets w JOIN wallet_members m ON m.wallet_id = w.id"
+        " WHERE w.id = ? AND m.user_id = ?", (wallet_id, g.user["id"])).fetchone()
     if wallet is None:
         abort(404)
     return wallet
@@ -104,12 +108,52 @@ def month_total(wallet_id, month):
 
 @app.get("/")
 def index():
-    return redirect(url_for("wallet", kind="personal"))
+    wallets = user_wallets()
+    if not wallets:
+        abort(404)
+    return redirect(url_for("wallet", wallet_id=wallets[0]["id"]))
 
 
-@app.get("/portfel/<kind>")
-def wallet(kind):
-    w = get_wallet(kind)
+@app.post("/portfele/nowy")
+def new_wallet():
+    name = (request.form.get("name") or "").strip()[:60]
+    if not name:
+        flash("Podaj nazwę portfela.", "error")
+        return redirect(request.referrer or url_for("index"))
+    wid = g.conn.execute("INSERT INTO wallets (name, kind, owner_id) VALUES (?, 'shared', ?)",
+                         (name, g.user["id"])).lastrowid
+    g.conn.execute("INSERT INTO wallet_members VALUES (?, ?)", (wid, g.user["id"]))
+    flash("Portfel utworzony. Wyślij współlokatorom link zaproszenia.", "ok")
+    return redirect(url_for("wallet", wallet_id=wid))
+
+
+@app.post("/portfel/<int:wallet_id>/zaproszenie")
+def invite(wallet_id):
+    w = get_wallet(wallet_id)
+    if w["kind"] != "shared":
+        abort(404)
+    g.conn.execute(
+        "INSERT INTO invitations (wallet_id, code, expires_at) VALUES (?, ?, datetime('now', ?))",
+        (w["id"], secrets.token_urlsafe(16), f"+{INVITE_DAYS} days"))
+    flash(f"Nowy link zaproszenia jest ważny {INVITE_DAYS} dni.", "ok")
+    return redirect(url_for("wallet", wallet_id=w["id"]))
+
+
+@app.get("/dolacz/<code>")
+def join(code):
+    inv = g.conn.execute("SELECT wallet_id FROM invitations WHERE code = ? AND expires_at > datetime('now')",
+                         (code,)).fetchone()
+    if inv is None:
+        flash("Zaproszenie wygasło lub jest nieprawidłowe. Poproś o nowy link.", "error")
+        return redirect(url_for("index"))
+    g.conn.execute("INSERT OR IGNORE INTO wallet_members VALUES (?, ?)", (inv["wallet_id"], g.user["id"]))
+    flash("Dołączono do wspólnego portfela.", "ok")
+    return redirect(url_for("wallet", wallet_id=inv["wallet_id"]))
+
+
+@app.get("/portfel/<int:wallet_id>")
+def wallet(wallet_id):
+    w = get_wallet(wallet_id)
     month = parse_month(request.args.get("m"))
     ym = month.strftime("%Y-%m")
     expenses = g.conn.execute(
@@ -130,8 +174,12 @@ def wallet(kind):
         " WHERE m.wallet_id = ? GROUP BY u.id ORDER BY total DESC", (ym, w["id"])).fetchall()
     total = sum(e["amount"] for e in expenses)
     prev_total = month_total(w["id"], shift_month(month, -1))
+    invitation = w["kind"] == "shared" and g.conn.execute(
+        "SELECT code, expires_at FROM invitations WHERE wallet_id = ? AND expires_at > datetime('now')"
+        " ORDER BY id DESC LIMIT 1", (w["id"],)).fetchone()
     return render_template(
-        "wallet.html", wallet=w, kind=kind, expenses=expenses, total=total,
+        "wallet.html", wallet=w, wallets=user_wallets(), invitation=invitation,
+        expenses=expenses, total=total,
         prev_total=prev_total, by_category=by_category, by_person=by_person,
         categories=g.conn.execute("SELECT * FROM categories ORDER BY id").fetchall(),
         month=month, month_name=f"{MONTHS[month.month - 1]} {month.year}",
@@ -140,9 +188,9 @@ def wallet(kind):
         today=date.today().isoformat())
 
 
-@app.post("/portfel/<kind>/dodaj")
-def add_expense(kind):
-    w = get_wallet(kind)
+@app.post("/portfel/<int:wallet_id>/dodaj")
+def add_expense(wallet_id):
+    w = get_wallet(wallet_id)
     amount = parse_amount(request.form.get("amount"))
     category = request.form.get("category_id", type=int)
     spent_on = request.form.get("spent_on") or date.today().isoformat()
@@ -160,7 +208,7 @@ def add_expense(kind):
             " VALUES (?, ?, ?, ?, ?, ?)",
             (w["id"], g.user["id"], category, amount, description, spent_on))
         flash("Wydatek dodany.", "ok")
-    return redirect(url_for("wallet", kind=kind, m=(spent_on or "")[:7] or None))
+    return redirect(url_for("wallet", wallet_id=w["id"], m=(spent_on or "")[:7] or None))
 
 
 @app.post("/wydatek/<int:expense_id>/usun")

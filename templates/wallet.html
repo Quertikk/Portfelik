@@ -1,17 +1,28 @@
 {% extends "base.html" %}
 {% block title %}{{ wallet.name }} · Portfelik{% endblock %}
 {% block content %}
-<nav class="tabs">
-  <a href="{{ url_for('wallet', kind='personal', m=month.strftime('%Y-%m')) }}"
-     class="{% if kind == 'personal' %}active{% endif %}">Mój portfel</a>
-  <a href="{{ url_for('wallet', kind='shared', m=month.strftime('%Y-%m')) }}"
-     class="{% if kind == 'shared' %}active{% endif %}">Wspólny portfel</a>
+{% set shared = wallet.kind == 'shared' %}
+<nav class="tabs" aria-label="Moje portfele">
+  {% for w in wallets %}
+    <a href="{{ url_for('wallet', wallet_id=w.id, m=month.strftime('%Y-%m')) }}"
+       class="{% if w.id == wallet.id %}active{% endif %}"
+       {% if w.id == wallet.id %}aria-current="page"{% endif %}>{{ 'Mój portfel' if w.kind == 'personal' else w.name }}</a>
+  {% endfor %}
 </nav>
+<details class="new-wallet">
+  <summary>+ Nowy wspólny portfel</summary>
+  <form method="post" action="{{ url_for('new_wallet') }}" class="inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label for="wallet_name" class="sr-only">Nazwa portfela</label>
+    <input id="wallet_name" name="name" maxlength="60" placeholder="Nazwa, np. Wspólne mieszkanie" required>
+    <button type="submit">Utwórz</button>
+  </form>
+</details>
 
 <section class="month">
-  <a href="{{ url_for('wallet', kind=kind, m=prev_m) }}" aria-label="Poprzedni miesiąc">‹</a>
-  <h1>{{ wallet.name if kind == 'shared' else 'Moje wydatki' }} · {{ month_name }}</h1>
-  <a href="{{ url_for('wallet', kind=kind, m=next_m) }}" aria-label="Następny miesiąc">›</a>
+  <a href="{{ url_for('wallet', wallet_id=wallet.id, m=prev_m) }}" aria-label="Poprzedni miesiąc">‹</a>
+  <h1>{{ wallet.name if shared else 'Moje wydatki' }} · {{ month_name }}</h1>
+  <a href="{{ url_for('wallet', wallet_id=wallet.id, m=next_m) }}" aria-label="Następny miesiąc">›</a>
 </section>
 
 <section class="cards">
@@ -38,26 +49,41 @@
     {% endfor %}
   </div>
 
-  {% if kind == 'shared' %}
+  {% if shared %}
   <div class="card">
     <span class="label">Kto ile zapłacił</span>
     {% for p in by_person %}
       <div class="bar-row"><span>{{ p.name }}</span><span>{{ p.total | zl }}</span></div>
     {% endfor %}
   </div>
+
+  <div class="card">
+    <span class="label">Zaproś do portfela</span>
+    {% if invitation %}
+      <label for="invite_link" class="muted">Link ważny do {{ invitation.expires_at[:16] }} (UTC):</label>
+      <input id="invite_link" class="wide" readonly value="{{ url_for('join', code=invitation.code, _external=True) }}"
+             onfocus="this.select()">
+    {% else %}
+      <p class="muted">Utwórz link i wyślij go osobie, która ma dołączyć. Po zalogowaniu trafi do tego portfela.</p>
+    {% endif %}
+    <form method="post" action="{{ url_for('invite', wallet_id=wallet.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="secondary">{{ 'Nowy link' if invitation else 'Utwórz link zaproszenia' }}</button>
+    </form>
+  </div>
   {% endif %}
 </section>
 
 <section class="card">
   <span class="label">Dodaj wydatek</span>
-  <form method="post" action="{{ url_for('add_expense', kind=kind) }}" class="add">
+  <form method="post" action="{{ url_for('add_expense', wallet_id=wallet.id) }}" class="add">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <input name="amount" inputmode="decimal" placeholder="Kwota, np. 12,50" required>
-    <select name="category_id" required>
+    <input name="amount" inputmode="decimal" placeholder="Kwota, np. 12,50" aria-label="Kwota" required>
+    <select name="category_id" aria-label="Kategoria" required>
       {% for c in categories %}<option value="{{ c.id }}">{{ c.icon }} {{ c.name }}</option>{% endfor %}
     </select>
-    <input name="description" placeholder="Opis (opcjonalnie)" maxlength="200">
-    <input name="spent_on" type="date" value="{{ today }}">
+    <input name="description" placeholder="Opis (opcjonalnie)" aria-label="Opis" maxlength="200">
+    <input name="spent_on" type="date" aria-label="Data" value="{{ today }}">
     <button type="submit">Dodaj</button>
   </form>
 </section>
@@ -65,21 +91,21 @@
 <section class="card">
   <span class="label">Lista wydatków</span>
   <table>
-    <thead><tr><th>Data</th><th>Kategoria</th><th>Opis</th>{% if kind == 'shared' %}<th>Kto</th>{% endif %}<th class="num">Kwota</th><th></th></tr></thead>
+    <thead><tr><th>Data</th><th>Kategoria</th><th>Opis</th>{% if shared %}<th>Kto</th>{% endif %}<th class="num">Kwota</th><th></th></tr></thead>
     <tbody>
     {% for e in expenses %}
       <tr>
         <td>{{ e.spent_on[8:10] }}.{{ e.spent_on[5:7] }}</td>
         <td>{{ e.icon }} {{ e.category }}</td>
         <td>{{ e.description }}</td>
-        {% if kind == 'shared' %}<td>{{ e.who }}</td>{% endif %}
+        {% if shared %}<td>{{ e.who }}</td>{% endif %}
         <td class="num">{{ e.amount | zl }}</td>
         <td>
           {% if e.user_id == g.user.id %}
           <form method="post" action="{{ url_for('delete_expense', expense_id=e.id) }}"
                 onsubmit="return confirm('Usunąć ten wydatek?')">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button class="link" title="Usuń">✕</button>
+            <button class="link" title="Usuń" aria-label="Usuń wydatek">✕</button>
           </form>
           {% endif %}
         </td>

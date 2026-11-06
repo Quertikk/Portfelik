@@ -45,6 +45,14 @@ CREATE TABLE IF NOT EXISTS expenses (
 ALTER TABLE users ADD COLUMN email TEXT;
 ALTER TABLE users ADD COLUMN password_hash TEXT;
 CREATE UNIQUE INDEX users_email ON users(email);
+""", """
+-- F7: zaproszenia do wspólnego portfela; expires_at w formacie datetime('now') (UTC)
+CREATE TABLE invitations (
+    id         INTEGER PRIMARY KEY,
+    wallet_id  INTEGER NOT NULL REFERENCES wallets(id),
+    code       TEXT NOT NULL UNIQUE,
+    expires_at TEXT NOT NULL
+);
 """]
 
 USERS = ["Valentyn", "Daria", "Filip"]
@@ -91,14 +99,15 @@ def _seed(conn):
         conn.execute("INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)",
                      (name, f"{name.lower()}@demo.pl", _demo_hash()))
 
-    users = {r["name"]: r["id"] for r in conn.execute("SELECT id, name FROM users")}
+    users = {r["name"]: r["id"] for r in conn.execute("SELECT id, name FROM users ORDER BY id")}
     for name, uid in users.items():
         wid = conn.execute(
             "INSERT INTO wallets (name, kind, owner_id) VALUES (?, 'personal', ?)",
             (f"Portfel: {name}", uid)).lastrowid
         conn.execute("INSERT INTO wallet_members VALUES (?, ?)", (wid, uid))
     shared = conn.execute(
-        "INSERT INTO wallets (name, kind) VALUES (?, 'shared')", (SHARED_WALLET,)).lastrowid
+        "INSERT INTO wallets (name, kind, owner_id) VALUES (?, 'shared', ?)",
+        (SHARED_WALLET, users[USERS[0]])).lastrowid
     for uid in users.values():
         conn.execute("INSERT INTO wallet_members VALUES (?, ?)", (shared, uid))
 

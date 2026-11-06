@@ -34,9 +34,9 @@ def test_register_rejects_invalid_data(anon, data):
 def test_login_and_logout(anon):
     resp = anon.post("/logowanie", data={"email": "filip@demo.pl", "password": db.DEMO_PASSWORD})
     assert resp.status_code == 302
-    assert anon.get("/portfel/personal").status_code == 200
+    assert anon.get("/portfel/3").status_code == 200
     anon.post("/wyloguj")
-    assert "/logowanie" in anon.get("/portfel/personal").location
+    assert "/logowanie" in anon.get("/portfel/3").location
 
 
 def test_wrong_password_and_unknown_email_give_same_message(anon):
@@ -47,22 +47,22 @@ def test_wrong_password_and_unknown_email_give_same_message(anon):
     assert msg in wrong_pass.get_data(as_text=True) and msg in no_user.get_data(as_text=True)
 
 
-@pytest.mark.parametrize("url", ["/", "/portfel/personal", "/portfel/shared"])
+@pytest.mark.parametrize("url", ["/", "/portfel/3", "/portfel/4"])
 def test_pages_require_login(anon, url):
     resp = anon.get(url)
     assert resp.status_code == 302 and "/logowanie" in resp.location
 
 
 def test_post_requires_login(anon):
-    resp = anon.post("/portfel/personal/dodaj", data={"amount": "5", "category_id": 1})
+    resp = anon.post("/portfel/3/dodaj", data={"amount": "5", "category_id": 1})
     assert "/logowanie" in resp.location
     assert query("SELECT COUNT(*) FROM expenses WHERE description = ''")[0][0] == 0
 
 
 def test_login_redirects_back_to_next(anon):
     resp = anon.post("/logowanie", data={"email": "filip@demo.pl", "password": db.DEMO_PASSWORD,
-                                         "next": "/portfel/shared"})
-    assert resp.location.endswith("/portfel/shared")
+                                         "next": "/portfel/4"})
+    assert resp.location.endswith("/portfel/4")
 
 
 @pytest.mark.parametrize("evil", ["https://evil.example", "//evil.example", "/\\evil.example"])
@@ -73,4 +73,4 @@ def test_login_ignores_external_next(anon, evil):
 
 def test_user_switcher_removed(client):
     assert client.post("/user", data={"user_id": 1}).status_code in (404, 405)
-    assert "Jestem:" not in client.get("/portfel/personal").get_data(as_text=True)
+    assert "Jestem:" not in client.get("/portfel/3").get_data(as_text=True)
