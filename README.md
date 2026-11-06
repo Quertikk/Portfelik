@@ -53,6 +53,9 @@ pytest
 ```
 app.py            serwer i obsługa stron
 auth.py           rejestracja, logowanie i wylogowanie
+budget.py         limity kategorii i tryb Oszczędny
+wsgi.py           punkt wejścia na serwerze (WSGI)
+scripts/          kopia bazy danych (backup_db.py)
 db.py             migracje bazy danych i dane demonstracyjne
 tests/            testy automatyczne (pytest)
 templates/        szablony stron (HTML)
@@ -71,6 +74,7 @@ requirements.txt  zależności Pythona
 | [docs/backlog.md](docs/backlog.md) | Zaległości produktowe: wymagania funkcjonalne i niefunkcjonalne, priorytety, szacunki |
 | [docs/harmonogram.md](docs/harmonogram.md) | Sprinty, wykres Gantta, podział prac (WBS), macierz RAM |
 | [docs/postepy.md](docs/postepy.md) | Dziennik postępów z cotygodniowych spotkań |
+| [docs/testy.md](docs/testy.md) | Scenariusze testowe z odwołaniem do testów automatycznych |
 
 ## Status
 
