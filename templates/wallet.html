@@ -25,6 +25,13 @@
   <a href="{{ url_for('wallet', wallet_id=wallet.id, m=next_m) }}" aria-label="Następny miesiąc">›</a>
 </section>
 
+{% if saver %}
+<div class="flash saver" role="status">
+  <strong>Tryb Oszczędny.</strong> W kategoriach z limitem wydano już ponad 80% sumy limitów, a miesiąc jeszcze trwa.
+  Odłóż większe zakupy na następny miesiąc.
+</div>
+{% endif %}
+
 <section class="cards">
   <div class="card stat">
     <span class="label">Wydano w tym miesiącu</span>
@@ -41,9 +48,17 @@
     <span class="label">Według kategorii</span>
     {% for c in by_category %}
       <div class="bar-row">
-        <span>{{ c.icon }} {{ c.name }}</span><span>{{ c.total | zl }}</span>
+        <span>{{ c.icon }} {{ c.name }}</span>
+        <span>{{ c.total | zl }}{% if c.lim %} <span class="muted">/ {{ c.lim | zl }}</span>{% endif %}</span>
       </div>
-      <div class="bar"><div style="width: {{ (c.total * 100 / total) | round | int }}%"></div></div>
+      {% if c.lim %}
+        {% set pct = (c.total * 100 / c.lim) | round | int %}
+        <div class="bar {{ c.state }}"><div style="width: {{ [pct, 100] | min }}%"></div></div>
+        {% if c.state == 'warn' %}<span class="limit-note warn">{{ pct }}% limitu</span>
+        {% elif c.state == 'over' %}<span class="limit-note over">Limit przekroczony o {{ (c.total - c.lim) | zl }}</span>{% endif %}
+      {% else %}
+        <div class="bar"><div style="width: {{ ((c.total * 100 / total) if total else 0) | round | int }}%"></div></div>
+      {% endif %}
     {% else %}
       <p class="empty">Brak wydatków w tym miesiącu.</p>
     {% endfor %}
@@ -148,22 +163,35 @@
   </table>
 </section>
 
-{% if wallet.owner_id == g.user.id and shared %}
+{% if wallet.owner_id == g.user.id %}
 <details class="card settings">
   <summary class="label">Ustawienia portfela</summary>
+  <h2>Miesięczne limity kategorii (zł)</h2>
+  <p class="muted">Puste pole oznacza brak limitu. Ostrzeżenie pojawia się po wydaniu 80% limitu.</p>
+  <form method="post" action="{{ url_for('set_limits', wallet_id=wallet.id) }}" class="limits">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {% for c in categories %}
+      <label for="limit_{{ c.id }}">{{ c.icon }} {{ c.name }}</label>
+      <input id="limit_{{ c.id }}" name="limit_{{ c.id }}" inputmode="decimal"
+             value="{{ ('%.2f' | format(limits[c.id] / 100) | replace('.', ',')) if limits[c.id] }}">
+    {% endfor %}
+    <button type="submit">Zapisz limity</button>
+  </form>
+  {% if shared %}
+  <h2>Zatwierdzanie wydatków</h2>
   <form method="post" action="{{ url_for('set_threshold', wallet_id=wallet.id) }}" class="inline">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <label for="threshold">Próg zatwierdzania (zł)</label>
     <input id="threshold" name="threshold" inputmode="decimal" value="{{ '%.2f' | format(wallet.approval_threshold / 100) | replace('.', ',') }}" required>
     <button type="submit">Zapisz próg</button>
   </form>
+  {% endif %}
 </details>
 {% endif %}
 
 <section class="card soon">
   <span class="label">W przygotowaniu</span>
   <ul>
-    <li>📊 Limity budżetu i tryb „Oszczędny” <em>(sprint 1)</em></li>
     <li>📷 Dodawanie wydatku ze zdjęcia paragonu przez AI <em>(sprint 2)</em></li>
     <li>🔁 Subskrypcje i przypomnienia <em>(sprint 2)</em></li>
   </ul>

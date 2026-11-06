@@ -60,6 +60,14 @@ ALTER TABLE expenses ADD COLUMN status TEXT NOT NULL DEFAULT 'approved'
     CHECK (status IN ('pending', 'approved', 'rejected'));
 ALTER TABLE expenses ADD COLUMN decided_by INTEGER REFERENCES users(id);
 ALTER TABLE expenses ADD COLUMN decided_at TEXT;
+""", """
+-- F10: miesięczne limity kategorii w portfelu (w groszach)
+CREATE TABLE category_limits (
+    wallet_id   INTEGER NOT NULL REFERENCES wallets(id),
+    category_id INTEGER NOT NULL REFERENCES categories(id),
+    amount      INTEGER NOT NULL CHECK (amount > 0),
+    PRIMARY KEY (wallet_id, category_id)
+);
 """]
 
 USERS = ["Valentyn", "Daria", "Filip"]

@@ -9,6 +9,7 @@ from flask_wtf.csrf import CSRFProtect
 
 import db
 from auth import bp as auth_bp
+from budget import limit_state, saver_mode
 
 
 def load_secret_key():
@@ -169,11 +170,18 @@ def wallet(wallet_id):
         " JOIN categories c ON c.id = e.category_id JOIN users u ON u.id = e.user_id"
         " WHERE e.wallet_id = ? AND substr(e.spent_on, 1, 7) = ?"
         " ORDER BY e.spent_on DESC, e.id DESC", (w["id"], ym)).fetchall()
-    by_category = g.conn.execute(
-        "SELECT c.name, c.icon, SUM(e.amount) AS total FROM expenses e"
-        " JOIN categories c ON c.id = e.category_id"
-        f" WHERE e.wallet_id = ? AND substr(e.spent_on, 1, 7) = ? AND {APPROVED}"
-        " GROUP BY c.id ORDER BY total DESC", (w["id"], ym)).fetchall()
+    # kategorie z wydatkami lub z limitem; lim to limit miesięczny albo NULL
+    by_category = [dict(r, state=r["lim"] and limit_state(r["total"], r["lim"])) for r in g.conn.execute(
+        "SELECT c.id, c.name, c.icon, COALESCE(s.total, 0) AS total, l.amount AS lim FROM categories c"
+        " LEFT JOIN (SELECT e.category_id, SUM(e.amount) AS total FROM expenses e"
+        f"   WHERE e.wallet_id = ? AND substr(e.spent_on, 1, 7) = ? AND {APPROVED}"
+        "   GROUP BY e.category_id) s ON s.category_id = c.id"
+        " LEFT JOIN category_limits l ON l.category_id = c.id AND l.wallet_id = ?"
+        " WHERE s.total IS NOT NULL OR l.amount IS NOT NULL"
+        " ORDER BY total DESC, c.id", (w["id"], ym, w["id"]))]
+    limited = [c for c in by_category if c["lim"]]
+    saver = month == date.today().replace(day=1) and saver_mode(
+        sum(c["total"] for c in limited), sum(c["lim"] for c in limited), date.today())
     by_person = g.conn.execute(
         "SELECT u.name, COALESCE(SUM(e.amount), 0) AS total FROM wallet_members m"
         " JOIN users u ON u.id = m.user_id"
@@ -191,7 +199,8 @@ def wallet(wallet_id):
         " ORDER BY id DESC LIMIT 1", (w["id"],)).fetchone()
     return render_template(
         "wallet.html", wallet=w, wallets=user_wallets(), invitation=invitation,
-        expenses=expenses, pending=pending, total=total,
+        expenses=expenses, pending=pending, total=total, saver=saver,
+        limits={c["id"]: c["lim"] for c in limited},
         prev_total=prev_total, by_category=by_category, by_person=by_person,
         categories=g.conn.execute("SELECT * FROM categories ORDER BY id").fetchall(),
         month=month, month_name=f"{MONTHS[month.month - 1]} {month.year}",
@@ -265,6 +274,32 @@ def set_threshold(wallet_id):
     else:
         g.conn.execute("UPDATE wallets SET approval_threshold = ? WHERE id = ?", (amount, w["id"]))
         flash("Próg zatwierdzania zapisany.", "ok")
+    return redirect(url_for("wallet", wallet_id=w["id"]))
+
+
+@app.post("/portfel/<int:wallet_id>/limity")
+def set_limits(wallet_id):
+    """Pole limit_<id kategorii>: puste usuwa limit, kwota go ustawia; błędna kwota nie zmienia limitu."""
+    w = get_wallet(wallet_id)
+    if w["owner_id"] != g.user["id"]:
+        abort(403)
+    invalid = []
+    for c in g.conn.execute("SELECT id, name FROM categories ORDER BY id"):
+        text = (request.form.get(f"limit_{c['id']}") or "").strip()
+        amount = parse_amount(text)
+        if not text:
+            g.conn.execute("DELETE FROM category_limits WHERE wallet_id = ? AND category_id = ?", (w["id"], c["id"]))
+        elif amount is None:
+            invalid.append(c["name"])
+        else:
+            g.conn.execute(
+                "INSERT INTO category_limits (wallet_id, category_id, amount) VALUES (?, ?, ?)"
+                " ON CONFLICT (wallet_id, category_id) DO UPDATE SET amount = excluded.amount",
+                (w["id"], c["id"], amount))
+    if invalid:
+        flash("Niepoprawna kwota limitu: " + ", ".join(invalid) + ". Pozostałe limity zapisane.", "error")
+    else:
+        flash("Limity zapisane.", "ok")
     return redirect(url_for("wallet", wallet_id=w["id"]))
 
 
