@@ -37,7 +37,17 @@ main { max-width: 960px; margin: 0 auto; padding: 16px; }
 .add > * { min-width: 0; width: 100%; }
 input, select, button { font: inherit; padding: 9px 10px; border: 1px solid var(--border); border-radius: 8px; background: #fff; }
 button { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; cursor: pointer; }
+button.secondary { background: var(--card); border-color: var(--border); color: var(--text); }
 button.link { background: none; border: none; color: var(--muted); padding: 2px 6px; }
+button, .tabs a { min-height: 44px; }
+button.link { min-height: 0; min-width: 44px; }
+
+.auth { max-width: 420px; margin: 24px auto; }
+.auth h1 { font-size: 1.3rem; margin: 0 0 12px; }
+.stack { display: grid; gap: 6px; }
+.stack label { font-size: .9rem; font-weight: 600; margin-top: 6px; }
+.stack button { margin-top: 12px; }
+.muted { color: var(--muted); font-size: .9rem; }
 button.link:hover { color: var(--danger); }
 
 table { width: 100%; border-collapse: collapse; }

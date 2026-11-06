@@ -40,5 +40,13 @@ def test_failed_migration_rolls_back(tmp_path, monkeypatch):
     except sqlite3.Error:
         pass
     with db.connect() as conn:
-        assert conn.execute("PRAGMA user_version").fetchone()[0] == 1
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == len(db.MIGRATIONS) - 1
         assert conn.execute("SELECT name FROM sqlite_master WHERE name = 't'").fetchone() is None
+
+
+def test_init_db_without_demo_has_categories_but_no_users(tmp_path, monkeypatch):
+    monkeypatch.setattr(db, "DB_PATH", tmp_path / "prod.db")
+    db.init_db()
+    with db.connect() as conn:
+        assert conn.execute("SELECT COUNT(*) FROM users").fetchone()[0] == 0
+        assert conn.execute("SELECT COUNT(*) FROM categories").fetchone()[0] == len(db.CATEGORIES)

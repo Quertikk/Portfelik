@@ -35,7 +35,9 @@ Wymagany Python 3.10 lub nowszy.
 2. Uruchom `start.bat`. Skrypt zainstaluje Flask, uruchomi aplikację i otworzy przeglądarkę.
 3. Aplikacja działa pod adresem http://127.0.0.1:5000
 
-Przy pierwszym uruchomieniu tworzona jest baza `portfelik.db` z danymi demonstracyjnymi. Żeby zacząć od nowa, wystarczy usunąć ten plik.
+Przy pierwszym uruchomieniu tworzona jest baza `portfelik.db` z danymi demonstracyjnymi. Żeby zacząć od nowa, wystarczy usunąć ten plik. Bazę sprzed wprowadzenia logowania też trzeba usunąć, bo jej konta nie mają haseł.
+
+Konta demonstracyjne (hasło `demo1234`): `valentyn@demo.pl`, `daria@demo.pl`, `filip@demo.pl`. Powstają tylko przy uruchomieniu lokalnym (`start.bat` lub `python app.py`). Na serwerze aplikacja startuje przez WSGI bez kont demonstracyjnych, a użytkownicy zakładają konta na stronie rejestracji.
 
 Klucz sesji (`SECRET_KEY`) pochodzi ze zmiennej środowiskowej. Lokalnie aplikacja tworzy plik `secret_key.txt` (jest w `.gitignore`).
 
@@ -50,6 +52,7 @@ pytest
 
 ```
 app.py            serwer i obsługa stron
+auth.py           rejestracja, logowanie i wylogowanie
 db.py             migracje bazy danych i dane demonstracyjne
 tests/            testy automatyczne (pytest)
 templates/        szablony stron (HTML)

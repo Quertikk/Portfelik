@@ -1,7 +1,10 @@
 """Baza danych Portfelika (SQLite): schemat i dane demonstracyjne."""
 import sqlite3
 from datetime import date, timedelta
+from functools import cache
 from pathlib import Path
+
+from werkzeug.security import generate_password_hash
 
 DB_PATH = Path(__file__).with_name("portfelik.db")
 
@@ -37,9 +40,15 @@ CREATE TABLE IF NOT EXISTS expenses (
     spent_on    TEXT NOT NULL,                        -- RRRR-MM-DD
     created_at  TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+""", """
+-- F6: logowanie. SQLite nie dodaje kolumny UNIQUE, więc unikalność e-maila daje indeks.
+ALTER TABLE users ADD COLUMN email TEXT;
+ALTER TABLE users ADD COLUMN password_hash TEXT;
+CREATE UNIQUE INDEX users_email ON users(email);
 """]
 
 USERS = ["Valentyn", "Daria", "Filip"]
+DEMO_PASSWORD = "demo1234"  # opisane w README; konta demo tylko w trybie deweloperskim
 CATEGORIES = [
     ("Jedzenie", "🛒"), ("Restauracje i kawiarnie", "☕"), ("Transport", "🚌"),
     ("Rachunki", "💡"), ("Rozrywka", "🎬"), ("Zakupy", "🛍️"),
@@ -62,18 +71,25 @@ def migrate(conn):
         conn.executescript(f"BEGIN;{script};PRAGMA user_version = {n};COMMIT;")
 
 
-def init_db():
-    """Migruje schemat; przy pustej bazie dodaje dane demonstracyjne."""
+def init_db(demo=False):
+    """Migruje schemat i dodaje kategorie; z demo=True pusta baza dostaje konta i wydatki demonstracyjne."""
     with connect() as conn:
         migrate(conn)
-        if conn.execute("SELECT COUNT(*) FROM users").fetchone()[0] == 0:
+        if conn.execute("SELECT COUNT(*) FROM categories").fetchone()[0] == 0:
+            conn.executemany("INSERT INTO categories (name, icon) VALUES (?, ?)", CATEGORIES)
+        if demo and conn.execute("SELECT COUNT(*) FROM users").fetchone()[0] == 0:
             _seed(conn)
+
+
+@cache
+def _demo_hash():
+    return generate_password_hash(DEMO_PASSWORD)  # jeden skrót na proces: scrypt jest celowo wolny
 
 
 def _seed(conn):
     for name in USERS:
-        conn.execute("INSERT INTO users (name) VALUES (?)", (name,))
-    conn.executemany("INSERT INTO categories (name, icon) VALUES (?, ?)", CATEGORIES)
+        conn.execute("INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)",
+                     (name, f"{name.lower()}@demo.pl", _demo_hash()))
 
     users = {r["name"]: r["id"] for r in conn.execute("SELECT id, name FROM users")}
     for name, uid in users.items():

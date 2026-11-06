@@ -8,6 +8,7 @@ from flask import Flask, abort, flash, g, redirect, render_template, request, se
 from flask_wtf.csrf import CSRFProtect
 
 import db
+from auth import bp as auth_bp
 
 
 def load_secret_key():
@@ -25,6 +26,7 @@ app = Flask(__name__)
 app.secret_key = load_secret_key()
 app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax")
 CSRFProtect(app)
+app.register_blueprint(auth_bp)
 
 MONTHS = ["styczeń", "luty", "marzec", "kwiecień", "maj", "czerwiec", "lipiec",
           "sierpień", "wrzesień", "październik", "listopad", "grudzień"]
@@ -58,12 +60,16 @@ def shift_month(d, delta):
     return date(i // 12, i % 12 + 1, 1)
 
 
+PUBLIC_ENDPOINTS = {"auth.login", "auth.register", "static"}
+
+
 @app.before_request
-def load_user():
+def require_login():
     g.conn = db.connect()
-    g.users = g.conn.execute("SELECT * FROM users ORDER BY id").fetchall()
     uid = session.get("user_id")
-    g.user = next((u for u in g.users if u["id"] == uid), g.users[0])
+    g.user = uid and g.conn.execute("SELECT * FROM users WHERE id = ?", (uid,)).fetchone()
+    if not g.user and request.endpoint not in PUBLIC_ENDPOINTS:
+        return redirect(url_for("auth.login", next=request.full_path.rstrip("?")))
 
 
 @app.teardown_request
@@ -94,12 +100,6 @@ def month_total(wallet_id, month):
         "SELECT COALESCE(SUM(amount), 0) FROM expenses"
         " WHERE wallet_id = ? AND substr(spent_on, 1, 7) = ?",
         (wallet_id, month.strftime("%Y-%m"))).fetchone()[0]
-
-
-@app.post("/user")
-def switch_user():
-    session["user_id"] = request.form.get("user_id", type=int)
-    return redirect(request.referrer or url_for("index"))
 
 
 @app.get("/")
@@ -175,7 +175,8 @@ def delete_expense(expense_id):
 
 db.init_db()
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # tryb deweloperski; serwer importuje app przez WSGI i nie dostaje kont demo
+    db.init_db(demo=True)
     port = int(os.environ.get("PORT", 5000))
     print(f"Portfelik: http://127.0.0.1:{port}")  # ASCII: konsola Windows (cp1252)
     app.run(host="127.0.0.1", port=port)
