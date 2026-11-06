@@ -2,3 +2,5 @@ portfelik.db
 __pycache__/
 *.pyc
 .venv/
+secret_key.txt
+.pytest_cache/

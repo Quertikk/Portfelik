@@ -37,11 +37,21 @@ Wymagany Python 3.10 lub nowszy.
 
 Przy pierwszym uruchomieniu tworzona jest baza `portfelik.db` z danymi demonstracyjnymi. Żeby zacząć od nowa, wystarczy usunąć ten plik.
 
+Klucz sesji (`SECRET_KEY`) pochodzi ze zmiennej środowiskowej. Lokalnie aplikacja tworzy plik `secret_key.txt` (jest w `.gitignore`).
+
+## Testy
+
+```
+pip install -r requirements.txt
+pytest
+```
+
 ## Struktura repozytorium
 
 ```
 app.py            serwer i obsługa stron
-db.py             schemat bazy danych i dane demonstracyjne
+db.py             migracje bazy danych i dane demonstracyjne
+tests/            testy automatyczne (pytest)
 templates/        szablony stron (HTML)
 static/           style (CSS)
 docs/             dokumentacja projektu
@@ -54,6 +64,7 @@ requirements.txt  zależności Pythona
 | Dokument | Zawartość |
 |---|---|
 | [docs/koncepcja.md](docs/koncepcja.md) | Koncepcja, cele, zakres, ograniczenia |
+| [docs/specyfikacja.md](docs/specyfikacja.md) | Specyfikacja wymagań: kryteria akceptacji, architektura |
 | [docs/backlog.md](docs/backlog.md) | Zaległości produktowe: wymagania funkcjonalne i niefunkcjonalne, priorytety, szacunki |
 | [docs/harmonogram.md](docs/harmonogram.md) | Sprinty, wykres Gantta, podział prac (WBS), macierz RAM |
 | [docs/postepy.md](docs/postepy.md) | Dziennik postępów z cotygodniowych spotkań |

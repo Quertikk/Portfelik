@@ -5,7 +5,8 @@ from pathlib import Path
 
 DB_PATH = Path(__file__).with_name("portfelik.db")
 
-SCHEMA = """
+# Migracja n+1 to MIGRATIONS[n]; wersja bazy w PRAGMA user_version. Nowe zmiany dopisujemy na końcu, starych nie edytujemy.
+MIGRATIONS = ["""
 CREATE TABLE IF NOT EXISTS users (
     id   INTEGER PRIMARY KEY,
     name TEXT NOT NULL UNIQUE
@@ -36,7 +37,7 @@ CREATE TABLE IF NOT EXISTS expenses (
     spent_on    TEXT NOT NULL,                        -- RRRR-MM-DD
     created_at  TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-"""
+"""]
 
 USERS = ["Valentyn", "Daria", "Filip"]
 CATEGORIES = [
@@ -54,10 +55,17 @@ def connect():
     return conn
 
 
+def migrate(conn):
+    """Stosuje brakujące migracje; każda w jednej transakcji razem z podniesieniem user_version."""
+    version = conn.execute("PRAGMA user_version").fetchone()[0]
+    for n, script in enumerate(MIGRATIONS[version:], start=version + 1):
+        conn.executescript(f"BEGIN;{script};PRAGMA user_version = {n};COMMIT;")
+
+
 def init_db():
-    """Tworzy tabele; przy pustej bazie dodaje dane demonstracyjne."""
+    """Migruje schemat; przy pustej bazie dodaje dane demonstracyjne."""
     with connect() as conn:
-        conn.executescript(SCHEMA)
+        migrate(conn)
         if conn.execute("SELECT COUNT(*) FROM users").fetchone()[0] == 0:
             _seed(conn)
 

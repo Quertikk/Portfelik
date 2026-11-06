@@ -2,13 +2,29 @@
 import os
 import secrets
 from datetime import date
+from pathlib import Path
 
 from flask import Flask, abort, flash, g, redirect, render_template, request, session, url_for
+from flask_wtf.csrf import CSRFProtect
 
 import db
 
+
+def load_secret_key():
+    """SECRET_KEY ze środowiska (serwer); lokalnie z pliku w .gitignore, tworzonego przy pierwszym starcie."""
+    key = os.environ.get("SECRET_KEY")
+    if key:
+        return key
+    path = Path(__file__).with_name("secret_key.txt")
+    if not path.exists():
+        path.write_text(secrets.token_hex(32))
+    return path.read_text().strip()
+
+
 app = Flask(__name__)
-app.secret_key = secrets.token_hex(16)
+app.secret_key = load_secret_key()
+app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax")
+CSRFProtect(app)
 
 MONTHS = ["styczeń", "luty", "marzec", "kwiecień", "maj", "czerwiec", "lipiec",
           "sierpień", "wrzesień", "październik", "listopad", "grudzień"]
@@ -24,7 +40,7 @@ def parse_amount(text):
     """'12,50' / '12.5' / '12' -> 1250 groszy; None przy błędnej kwocie."""
     try:
         value = round(float(text.replace(" ", "").replace(",", ".")) * 100)
-    except (AttributeError, ValueError):
+    except (AttributeError, ValueError, OverflowError):  # OverflowError: "inf", "1e999"
         return None
     return value if 0 < value <= 100_000_000 else None
 
