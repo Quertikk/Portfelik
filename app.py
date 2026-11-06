@@ -99,11 +99,19 @@ def get_wallet(wallet_id):
     return wallet
 
 
+# F8: do sum wchodzą tylko zatwierdzone wydatki; każda suma używa tego warunku (alias e = expenses)
+APPROVED = "e.status = 'approved'"
+
+
 def month_total(wallet_id, month):
     return g.conn.execute(
-        "SELECT COALESCE(SUM(amount), 0) FROM expenses"
-        " WHERE wallet_id = ? AND substr(spent_on, 1, 7) = ?",
+        "SELECT COALESCE(SUM(e.amount), 0) FROM expenses e"
+        f" WHERE e.wallet_id = ? AND substr(e.spent_on, 1, 7) = ? AND {APPROVED}",
         (wallet_id, month.strftime("%Y-%m"))).fetchone()[0]
+
+
+def needs_approval(wallet, amount):
+    return wallet["kind"] == "shared" and amount > wallet["approval_threshold"]
 
 
 @app.get("/")
@@ -164,22 +172,26 @@ def wallet(wallet_id):
     by_category = g.conn.execute(
         "SELECT c.name, c.icon, SUM(e.amount) AS total FROM expenses e"
         " JOIN categories c ON c.id = e.category_id"
-        " WHERE e.wallet_id = ? AND substr(e.spent_on, 1, 7) = ?"
+        f" WHERE e.wallet_id = ? AND substr(e.spent_on, 1, 7) = ? AND {APPROVED}"
         " GROUP BY c.id ORDER BY total DESC", (w["id"], ym)).fetchall()
     by_person = g.conn.execute(
         "SELECT u.name, COALESCE(SUM(e.amount), 0) AS total FROM wallet_members m"
         " JOIN users u ON u.id = m.user_id"
         " LEFT JOIN expenses e ON e.user_id = u.id AND e.wallet_id = m.wallet_id"
-        "   AND substr(e.spent_on, 1, 7) = ?"
+        f"   AND substr(e.spent_on, 1, 7) = ? AND {APPROVED}"
         " WHERE m.wallet_id = ? GROUP BY u.id ORDER BY total DESC", (ym, w["id"])).fetchall()
-    total = sum(e["amount"] for e in expenses)
+    pending = g.conn.execute(
+        "SELECT e.*, c.name AS category, c.icon, u.name AS who FROM expenses e"
+        " JOIN categories c ON c.id = e.category_id JOIN users u ON u.id = e.user_id"
+        " WHERE e.wallet_id = ? AND e.status = 'pending' ORDER BY e.spent_on, e.id", (w["id"],)).fetchall()
+    total = month_total(w["id"], month)
     prev_total = month_total(w["id"], shift_month(month, -1))
     invitation = w["kind"] == "shared" and g.conn.execute(
         "SELECT code, expires_at FROM invitations WHERE wallet_id = ? AND expires_at > datetime('now')"
         " ORDER BY id DESC LIMIT 1", (w["id"],)).fetchone()
     return render_template(
         "wallet.html", wallet=w, wallets=user_wallets(), invitation=invitation,
-        expenses=expenses, total=total,
+        expenses=expenses, pending=pending, total=total,
         prev_total=prev_total, by_category=by_category, by_person=by_person,
         categories=g.conn.execute("SELECT * FROM categories ORDER BY id").fetchall(),
         month=month, month_name=f"{MONTHS[month.month - 1]} {month.year}",
@@ -203,12 +215,57 @@ def add_expense(wallet_id):
     if amount is None or not valid_cat or spent_on is None:
         flash("Podaj poprawną kwotę, kategorię i datę.", "error")
     else:
+        status = "pending" if needs_approval(w, amount) else "approved"
         g.conn.execute(
-            "INSERT INTO expenses (wallet_id, user_id, category_id, amount, description, spent_on)"
-            " VALUES (?, ?, ?, ?, ?, ?)",
-            (w["id"], g.user["id"], category, amount, description, spent_on))
-        flash("Wydatek dodany.", "ok")
+            "INSERT INTO expenses (wallet_id, user_id, category_id, amount, description, spent_on, status)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (w["id"], g.user["id"], category, amount, description, spent_on, status))
+        flash("Wydatek czeka na zatwierdzenie przez innego członka portfela." if status == "pending"
+              else "Wydatek dodany.", "ok")
     return redirect(url_for("wallet", wallet_id=w["id"], m=(spent_on or "")[:7] or None))
+
+
+def decide(expense_id, status):
+    """Zatwierdza lub odrzuca oczekujący wydatek; decyduje członek portfela inny niż autor."""
+    e = g.conn.execute(
+        "SELECT e.* FROM expenses e JOIN wallet_members m ON m.wallet_id = e.wallet_id AND m.user_id = ?"
+        " WHERE e.id = ?", (g.user["id"], expense_id)).fetchone()
+    if e is None:
+        abort(404)
+    if e["user_id"] == g.user["id"]:
+        flash("Własny wydatek musi zatwierdzić inny członek portfela.", "error")
+    elif e["status"] != "pending":
+        flash("Ten wydatek nie czeka już na decyzję.", "error")
+    else:
+        g.conn.execute(
+            "UPDATE expenses SET status = ?, decided_by = ?, decided_at = datetime('now') WHERE id = ?",
+            (status, g.user["id"], expense_id))
+        flash("Wydatek zatwierdzony." if status == "approved" else "Wydatek odrzucony.", "ok")
+    return redirect(request.referrer or url_for("wallet", wallet_id=e["wallet_id"]))
+
+
+@app.post("/wydatek/<int:expense_id>/zatwierdz")
+def approve_expense(expense_id):
+    return decide(expense_id, "approved")
+
+
+@app.post("/wydatek/<int:expense_id>/odrzuc")
+def reject_expense(expense_id):
+    return decide(expense_id, "rejected")
+
+
+@app.post("/portfel/<int:wallet_id>/prog")
+def set_threshold(wallet_id):
+    w = get_wallet(wallet_id)
+    if w["owner_id"] != g.user["id"]:
+        abort(403)
+    amount = parse_amount(request.form.get("threshold"))
+    if amount is None:
+        flash("Podaj poprawny próg, np. 200.", "error")
+    else:
+        g.conn.execute("UPDATE wallets SET approval_threshold = ? WHERE id = ?", (amount, w["id"]))
+        flash("Próg zatwierdzania zapisany.", "ok")
+    return redirect(url_for("wallet", wallet_id=w["id"]))
 
 
 @app.post("/wydatek/<int:expense_id>/usun")

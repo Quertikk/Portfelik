@@ -74,6 +74,35 @@
   {% endif %}
 </section>
 
+{% if pending %}
+<section class="card pending">
+  <span class="label">Do zatwierdzenia ({{ pending | length }})</span>
+  <p class="muted">Wydatki powyżej {{ wallet.approval_threshold | zl }} wchodzą do sum dopiero po zatwierdzeniu przez innego członka portfela.</p>
+  {% for e in pending %}
+    <div class="decision">
+      <div>
+        <strong>{{ e.amount | zl }}</strong> · {{ e.icon }} {{ e.category }} · {{ e.who }}, {{ e.spent_on[8:10] }}.{{ e.spent_on[5:7] }}
+        {% if e.description %}<div class="muted">{{ e.description }}</div>{% endif %}
+      </div>
+      {% if e.user_id == g.user.id %}
+        <span class="muted">Czeka na decyzję innej osoby</span>
+      {% else %}
+        <div class="actions">
+          <form method="post" action="{{ url_for('approve_expense', expense_id=e.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit">Zatwierdź</button>
+          </form>
+          <form method="post" action="{{ url_for('reject_expense', expense_id=e.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="secondary danger">Odrzuć</button>
+          </form>
+        </div>
+      {% endif %}
+    </div>
+  {% endfor %}
+</section>
+{% endif %}
+
 <section class="card">
   <span class="label">Dodaj wydatek</span>
   <form method="post" action="{{ url_for('add_expense', wallet_id=wallet.id) }}" class="add">
@@ -99,7 +128,9 @@
         <td>{{ e.icon }} {{ e.category }}</td>
         <td>{{ e.description }}</td>
         {% if shared %}<td>{{ e.who }}</td>{% endif %}
-        <td class="num">{{ e.amount | zl }}</td>
+        <td class="num {{ e.status }}">{{ e.amount | zl }}
+          {% if e.status == 'pending' %}<span class="status">oczekuje</span>
+          {% elif e.status == 'rejected' %}<span class="status">odrzucony</span>{% endif %}</td>
         <td>
           {% if e.user_id == g.user.id %}
           <form method="post" action="{{ url_for('delete_expense', expense_id=e.id) }}"
@@ -117,10 +148,21 @@
   </table>
 </section>
 
+{% if wallet.owner_id == g.user.id and shared %}
+<details class="card settings">
+  <summary class="label">Ustawienia portfela</summary>
+  <form method="post" action="{{ url_for('set_threshold', wallet_id=wallet.id) }}" class="inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label for="threshold">Próg zatwierdzania (zł)</label>
+    <input id="threshold" name="threshold" inputmode="decimal" value="{{ '%.2f' | format(wallet.approval_threshold / 100) | replace('.', ',') }}" required>
+    <button type="submit">Zapisz próg</button>
+  </form>
+</details>
+{% endif %}
+
 <section class="card soon">
   <span class="label">W przygotowaniu</span>
   <ul>
-    <li>✅ Zatwierdzanie wspólnych wydatków powyżej progu <em>(sprint 1)</em></li>
     <li>📊 Limity budżetu i tryb „Oszczędny” <em>(sprint 1)</em></li>
     <li>📷 Dodawanie wydatku ze zdjęcia paragonu przez AI <em>(sprint 2)</em></li>
     <li>🔁 Subskrypcje i przypomnienia <em>(sprint 2)</em></li>

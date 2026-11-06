@@ -53,6 +53,13 @@ CREATE TABLE invitations (
     code       TEXT NOT NULL UNIQUE,
     expires_at TEXT NOT NULL
 );
+""", """
+-- F8: zatwierdzanie wspólnych wydatków powyżej progu (próg w groszach, domyślnie 200 zł)
+ALTER TABLE wallets ADD COLUMN approval_threshold INTEGER NOT NULL DEFAULT 20000;
+ALTER TABLE expenses ADD COLUMN status TEXT NOT NULL DEFAULT 'approved'
+    CHECK (status IN ('pending', 'approved', 'rejected'));
+ALTER TABLE expenses ADD COLUMN decided_by INTEGER REFERENCES users(id);
+ALTER TABLE expenses ADD COLUMN decided_at TEXT;
 """]
 
 USERS = ["Valentyn", "Daria", "Filip"]
@@ -140,3 +147,8 @@ def _seed(conn):
             "INSERT INTO expenses (wallet_id, user_id, category_id, amount, description, spent_on)"
             " VALUES (?, ?, ?, ?, ?, ?)",
             (wallet, users[who], cats[cat], round(zl * 100), desc, spent.isoformat()))
+    # wydatek powyżej progu 200 zł, czeka na decyzję kogoś innego niż Daria
+    conn.execute(
+        "INSERT INTO expenses (wallet_id, user_id, category_id, amount, description, spent_on, status)"
+        " VALUES (?, ?, ?, 34900, 'Nowa pralka (połowa ceny)', ?, 'pending')",
+        (shared, users["Daria"], cats["Zakupy"], first.isoformat()))
