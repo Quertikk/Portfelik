@@ -55,6 +55,13 @@ button.link { min-height: 0; min-width: 44px; }
 
 .tabs { flex-wrap: wrap; }
 .tabs a { flex: 1 1 140px; }
+.add .full { grid-column: 1 / -1; }
+td .muted, .comment { font-size: .85rem; margin-top: 2px; overflow-wrap: anywhere; }
+.comment { color: var(--text); }
+.row-actions { display: flex; align-items: center; justify-content: flex-end; }
+a.link { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px;
+         color: var(--muted); text-decoration: none; }
+a.link:hover { color: var(--accent); }
 .decision { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;
             padding: 10px 0; border-top: 1px solid var(--border); }
 .actions { display: flex; gap: 8px; }
@@ -96,5 +103,4 @@ th { color: var(--muted); font-weight: 500; font-size: .85rem; }
 @media (max-width: 700px) {
   .add { grid-template-columns: 1fr 1fr; }
   .add button { grid-column: span 2; }
-  th:nth-child(3), td:nth-child(3) { display: none; }
 }

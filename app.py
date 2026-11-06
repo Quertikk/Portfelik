@@ -209,29 +209,71 @@ def wallet(wallet_id):
         today=date.today().isoformat())
 
 
+def expense_form():
+    """Pola formularza wydatku po walidacji (dodawanie i edycja); przy błędzie komunikat i None."""
+    f = request.form
+    data = {"amount": parse_amount(f.get("amount")),
+            "category_id": f.get("category_id", type=int),
+            "spent_on": f.get("spent_on") or date.today().isoformat(),
+            "description": (f.get("description") or "").strip()[:200],
+            "comment": (f.get("comment") or "").strip()[:200]}
+    try:
+        date.fromisoformat(data["spent_on"])
+        valid_date = True
+    except ValueError:
+        valid_date = False
+    valid_cat = g.conn.execute("SELECT 1 FROM categories WHERE id = ?", (data["category_id"],)).fetchone()
+    if data["amount"] is None or not valid_cat or not valid_date:
+        flash("Podaj poprawną kwotę, kategorię i datę.", "error")
+        return None
+    return data
+
+
+def month_of(spent_on):
+    return (spent_on or "")[:7] or None
+
+
 @app.post("/portfel/<int:wallet_id>/dodaj")
 def add_expense(wallet_id):
     w = get_wallet(wallet_id)
-    amount = parse_amount(request.form.get("amount"))
-    category = request.form.get("category_id", type=int)
-    spent_on = request.form.get("spent_on") or date.today().isoformat()
-    description = (request.form.get("description") or "").strip()[:200]
-    valid_cat = g.conn.execute("SELECT 1 FROM categories WHERE id = ?", (category,)).fetchone()
-    try:
-        date.fromisoformat(spent_on)
-    except ValueError:
-        spent_on = None
-    if amount is None or not valid_cat or spent_on is None:
-        flash("Podaj poprawną kwotę, kategorię i datę.", "error")
-    else:
-        status = "pending" if needs_approval(w, amount) else "approved"
+    data = expense_form()
+    if data:
+        status = "pending" if needs_approval(w, data["amount"]) else "approved"
         g.conn.execute(
-            "INSERT INTO expenses (wallet_id, user_id, category_id, amount, description, spent_on, status)"
-            " VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (w["id"], g.user["id"], category, amount, description, spent_on, status))
+            "INSERT INTO expenses (wallet_id, user_id, category_id, amount, description, comment, spent_on, status)"
+            " VALUES (:wallet_id, :user_id, :category_id, :amount, :description, :comment, :spent_on, :status)",
+            dict(data, wallet_id=w["id"], user_id=g.user["id"], status=status))
         flash("Wydatek czeka na zatwierdzenie przez innego członka portfela." if status == "pending"
               else "Wydatek dodany.", "ok")
-    return redirect(url_for("wallet", wallet_id=w["id"], m=(spent_on or "")[:7] or None))
+    return redirect(url_for("wallet", wallet_id=w["id"], m=month_of(request.form.get("spent_on"))))
+
+
+@app.route("/wydatek/<int:expense_id>/edytuj", methods=["GET", "POST"])
+def edit_expense(expense_id):
+    """F19: edycja tylko przez autora; zmiana kwoty liczy status od nowa (odrzucony zostaje odrzucony)."""
+    e = g.conn.execute("SELECT * FROM expenses WHERE id = ? AND user_id = ?",
+                       (expense_id, g.user["id"])).fetchone()
+    if e is None:
+        abort(404)
+    w = get_wallet(e["wallet_id"])
+    if request.method == "GET":
+        return render_template("edit.html", e=e, wallet=w,
+                               categories=g.conn.execute("SELECT * FROM categories ORDER BY id").fetchall())
+    data = expense_form()
+    if not data:
+        return redirect(url_for("edit_expense", expense_id=e["id"]))
+    status = e["status"]
+    if data["amount"] != e["amount"] and status != "rejected":
+        status = "pending" if needs_approval(w, data["amount"]) else "approved"
+    g.conn.execute(
+        "UPDATE expenses SET amount = :amount, category_id = :category_id, spent_on = :spent_on,"
+        " description = :description, comment = :comment, status = :status,"
+        " decided_by = CASE WHEN :status = 'pending' THEN NULL ELSE decided_by END,"
+        " decided_at = CASE WHEN :status = 'pending' THEN NULL ELSE decided_at END WHERE id = :id",
+        dict(data, status=status, id=e["id"]))
+    flash("Zmiana kwoty wymaga ponownego zatwierdzenia." if status == "pending" and e["status"] != "pending"
+          else "Wydatek zapisany.", "ok")
+    return redirect(url_for("wallet", wallet_id=w["id"], m=month_of(data["spent_on"])))
 
 
 def decide(expense_id, status):

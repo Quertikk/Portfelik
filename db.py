@@ -68,6 +68,9 @@ CREATE TABLE category_limits (
     amount      INTEGER NOT NULL CHECK (amount > 0),
     PRIMARY KEY (wallet_id, category_id)
 );
+""", """
+-- F9: komentarz do wydatku (do 200 znaków, widoczny na liście i przy zatwierdzaniu)
+ALTER TABLE expenses ADD COLUMN comment TEXT NOT NULL DEFAULT '';
 """]
 
 USERS = ["Valentyn", "Daria", "Filip"]

@@ -98,6 +98,7 @@
       <div>
         <strong>{{ e.amount | zl }}</strong> · {{ e.icon }} {{ e.category }} · {{ e.who }}, {{ e.spent_on[8:10] }}.{{ e.spent_on[5:7] }}
         {% if e.description %}<div class="muted">{{ e.description }}</div>{% endif %}
+        {% if e.comment %}<div class="comment">💬 {{ e.comment }}</div>{% endif %}
       </div>
       {% if e.user_id == g.user.id %}
         <span class="muted">Czeka na decyzję innej osoby</span>
@@ -129,25 +130,29 @@
     <input name="description" placeholder="Opis (opcjonalnie)" aria-label="Opis" maxlength="200">
     <input name="spent_on" type="date" aria-label="Data" value="{{ today }}">
     <button type="submit">Dodaj</button>
+    <input name="comment" class="full" maxlength="200" aria-label="Komentarz"
+           placeholder="Komentarz dla współlokatorów (opcjonalnie), np. dlaczego tak drogo">
   </form>
 </section>
 
 <section class="card">
   <span class="label">Lista wydatków</span>
   <table>
-    <thead><tr><th>Data</th><th>Kategoria</th><th>Opis</th>{% if shared %}<th>Kto</th>{% endif %}<th class="num">Kwota</th><th></th></tr></thead>
+    <thead><tr><th>Data</th><th>Wydatek</th>{% if shared %}<th>Kto</th>{% endif %}<th class="num">Kwota</th><th><span class="sr-only">Akcje</span></th></tr></thead>
     <tbody>
     {% for e in expenses %}
       <tr>
         <td>{{ e.spent_on[8:10] }}.{{ e.spent_on[5:7] }}</td>
-        <td>{{ e.icon }} {{ e.category }}</td>
-        <td>{{ e.description }}</td>
+        <td>{{ e.icon }} {{ e.category }}
+          {% if e.description %}<div class="muted">{{ e.description }}</div>{% endif %}
+          {% if e.comment %}<div class="comment">💬 {{ e.comment }}</div>{% endif %}</td>
         {% if shared %}<td>{{ e.who }}</td>{% endif %}
         <td class="num {{ e.status }}">{{ e.amount | zl }}
           {% if e.status == 'pending' %}<span class="status">oczekuje</span>
           {% elif e.status == 'rejected' %}<span class="status">odrzucony</span>{% endif %}</td>
-        <td>
+        <td class="row-actions">
           {% if e.user_id == g.user.id %}
+          <a class="link" href="{{ url_for('edit_expense', expense_id=e.id) }}" title="Edytuj" aria-label="Edytuj wydatek">✎</a>
           <form method="post" action="{{ url_for('delete_expense', expense_id=e.id) }}"
                 onsubmit="return confirm('Usunąć ten wydatek?')">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -157,7 +162,7 @@
         </td>
       </tr>
     {% else %}
-      <tr><td colspan="6" class="empty">Brak wydatków w tym miesiącu.</td></tr>
+      <tr><td colspan="5" class="empty">Brak wydatków w tym miesiącu.</td></tr>
     {% endfor %}
     </tbody>
   </table>
