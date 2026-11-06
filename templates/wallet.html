@@ -51,6 +51,7 @@
 <section class="card">
   <span class="label">Dodaj wydatek</span>
   <form method="post" action="{{ url_for('add_expense', kind=kind) }}" class="add">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input name="amount" inputmode="decimal" placeholder="Kwota, np. 12,50" required>
     <select name="category_id" required>
       {% for c in categories %}<option value="{{ c.id }}">{{ c.icon }} {{ c.name }}</option>{% endfor %}
@@ -77,6 +78,7 @@
           {% if e.user_id == g.user.id %}
           <form method="post" action="{{ url_for('delete_expense', expense_id=e.id) }}"
                 onsubmit="return confirm('Usunąć ten wydatek?')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button class="link" title="Usuń">✕</button>
           </form>
           {% endif %}
