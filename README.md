@@ -41,21 +41,27 @@ Konta demonstracyjne (hasło `demo1234`): `valentyn@demo.pl`, `daria@demo.pl`, `
 
 Klucz sesji (`SECRET_KEY`) pochodzi ze zmiennej środowiskowej. Lokalnie aplikacja tworzy plik `secret_key.txt` (jest w `.gitignore`).
 
+Odczyt paragonów ze zdjęcia wymaga klucza API Gemini w zmiennej `GEMINI_API_KEY` (opcjonalnie `GEMINI_MODEL`). Bez klucza reszta aplikacji działa, a formularz paragonu pokazuje komunikat o braku konfiguracji.
+
 ## Testy
 
 ```
 pip install -r requirements.txt
 pytest
+python scripts/perf_check.py   # NF7: 1000 wydatków, limit 1 s
 ```
+
+Testy działają też w GitHub Actions przy każdym Pull Requeście.
 
 ## Struktura repozytorium
 
 ```
 app.py            serwer i obsługa stron
 auth.py           rejestracja, logowanie i wylogowanie
-budget.py         limity kategorii i tryb Oszczędny
+budget.py         limity, tryb Oszczędny, średnia, subskrypcje, rozliczenie
+receipts.py       odczyt paragonu przez model AI (Gemini)
 wsgi.py           punkt wejścia na serwerze (WSGI)
-scripts/          kopia bazy danych (backup_db.py)
+scripts/          kopia bazy (backup_db.py), próbka paragonów (receipt_spike.py), pomiar wydajności (perf_check.py)
 db.py             migracje bazy danych i dane demonstracyjne
 tests/            testy automatyczne (pytest)
 templates/        szablony stron (HTML)
@@ -75,8 +81,23 @@ requirements.txt  zależności Pythona
 | [docs/harmonogram.md](docs/harmonogram.md) | Sprinty, wykres Gantta, podział prac (WBS), macierz RAM |
 | [docs/postepy.md](docs/postepy.md) | Dziennik postępów z cotygodniowych spotkań |
 | [docs/testy.md](docs/testy.md) | Scenariusze testowe z odwołaniem do testów automatycznych |
+| [docs/uml.md](docs/uml.md) | Diagramy UML: przypadki użycia, sekwencja odczytu paragonu, stany wydatku |
+| [docs/opis-techniczny.md](docs/opis-techniczny.md) | Opis powykonawczy: pliki, trasy, baza, zmienne środowiskowe, bezpieczeństwo, wydajność |
+| [docs/instrukcja-uzytkownika.md](docs/instrukcja-uzytkownika.md) | Instrukcja użytkownika |
+| [docs/instrukcja-administratora.md](docs/instrukcja-administratora.md) | Instalacja, wdrożenie na PythonAnywhere, zmienne środowiskowe, kopia i przywracanie bazy, aktualizacja |
+| [docs/wytyczne.md](docs/wytyczne.md) | Lista kontrolna 15 punktów wytycznych prowadzącego ze stanem realizacji |
 | [docs/makiety.md](docs/makiety.md) | Makiety ekranów zatwierdzania (F8) i limitów (F10) do akceptacji Właściciela produktu |
 
 ## Status
 
-Sprint 0 zakończony: działa pierwsza wersja (portfel osobisty i wspólny, dodawanie wydatków, podsumowanie miesiąca).
+Sprinty 0–2 zakończone, sprint 3 (jakość i dokumentacja) w toku, zamrożenie funkcji 08.12, oddanie 11.12.2026.
+
+| Obszar | Stan |
+|---|---|
+| Konta i portfele | Rejestracja, logowanie, portfel osobisty i wspólny z zaproszeniami (F6, F7) |
+| Wydatki | Dodawanie, edycja, komentarz, usuwanie, zatwierdzanie powyżej progu, limity i tryb Oszczędny (F1–F5, F8–F10, F19) |
+| Analiza | Podsumowanie miesiąca, średnia z 3 miesięcy, rozliczenie, eksport CSV (F3, F12, F17, F18) |
+| AI | Dodanie wydatku ze zdjęcia paragonu przez Gemini (F11); test akceptacyjny 8 z 10 paragonów jeszcze do wykonania |
+| Subskrypcje | Lista z przypomnieniem 2 dni przed płatnością (F13) |
+| Nie zrobione | Skarbonka (F14) i osiągnięcia (F15): opcjonalne, niski priorytet; Telegram (F16) poza zakresem |
+| Jakość | 232 testy automatyczne, pokrycie `app.py`, `auth.py`, `budget.py`, `receipts.py` powyżej 95%, ładowanie portfela z 1000 wydatków w ok. 30 ms |

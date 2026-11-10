@@ -115,10 +115,10 @@ Przypadki użycia, klas lub ER (powyżej), sekwencji „”, stanów wydatku (o
 | 4 | Opis zadań i pakietów zadań | `docs/harmonogram.md` (WBS) |
 | 5 | Struktura podziału prac (pakiet, zadanie, odpowiedzialność, czas, osoby) | `docs/harmonogram.md` |
 | 6 | Macierz RAM | `docs/harmonogram.md` |
-| 7 | Schematy układów elektronicznych i mechanicznych | Nie dotyczy |
+| 7 | Schematy układów elektronicznych i mechanicznych | Nie dotyczy: `docs/koncepcja.md`, sekcja 8 |
 | 8 | Diagramy systemu i procesów (UML) | `docs/uml.md` |
 | 9 | Działający system | Aplikacja na serwerze |
-| 10 | Koncepcja tworzenia oprogramowania | `docs/koncepcja.md`, sekcja „” |
+| 10 | Koncepcja tworzenia oprogramowania | `docs/koncepcja.md`, sekcja 7 |
 | 11 | Napisane kody | Repozytorium |
 | 12 | Scenariusze testowe (cel, opis, dane wejściowe, oczekiwany wynik) | `docs/testy.md` |
 | 13 | Instrukcja użytkownika | `docs/instrukcja-uzytkownika.md` |
