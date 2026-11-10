@@ -123,3 +123,6 @@ tfoot th { color: var(--text); font-weight: 600; }
   th, td { padding: 8px 3px; }
   .row-actions { flex-direction: column; }
 }
+
+.badge-row { margin-top: 8px; opacity: .55; }
+.badge-row.earned { opacity: 1; }

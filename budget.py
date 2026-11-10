@@ -75,3 +75,30 @@ def settle(paid):
         if not due[c]:
             creditors.pop(0)
     return balance, transfers
+
+
+def month_done(month, today):
+    """F14/F15: miesiąc (pierwszy dzień) jest zakończony: minął albo dziś jest jego ostatni dzień."""
+    first = today.replace(day=1)
+    return month < first or (month == first and today.day == calendar.monthrange(today.year, today.month)[1])
+
+
+def achievements(approved_expenses, limits, over, done, piggy):
+    """F15: lista (nazwa, opis, zdobyte). Tylko zapisy w aplikacji, żadnych prawdziwych płatności.
+
+    approved_expenses: liczba zatwierdzonych wydatków portfela; limits: liczba kategorii z limitem;
+    over: liczba przekroczonych limitów w wybranym miesiącu; done: czy miesiąc się zakończył; piggy: saldo skarbonki.
+    """
+    return [
+        ("Pierwszy krok", "Dodaj pierwszy zatwierdzony wydatek.", approved_expenses > 0),
+        ("Zaplanowany budżet", "Ustaw limity w co najmniej 3 kategoriach.", limits >= 3),
+        ("Pod kontrolą", "Zakończ wybrany miesiąc z limitami i bez przekroczenia żadnego.",
+         done and limits > 0 and over == 0),
+        ("Skarbnik", "Przenieś pierwsze pieniądze do skarbonki.", piggy > 0),
+    ]
+
+
+# F15: humorystyczne, wirtualne „kary” za przekroczony limit; kolejna kategoria dostaje kolejną karę
+PENALTIES = ["Kawa dla całego mieszkania (na niby).", "Wyniesienie śmieci przez cały tydzień.",
+             "Jeden dzień bez zamawiania jedzenia.", "Umycie naczyń po wszystkich.",
+             "Dziesięć pompek przed następnym zakupem."]

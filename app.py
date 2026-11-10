@@ -14,7 +14,8 @@ from flask_wtf.csrf import CSRFProtect
 import db
 import receipts
 from auth import bp as auth_bp
-from budget import average, due_soon, limit_state, saver_mode, settle
+from budget import (PENALTIES, achievements, average, due_soon, limit_state, month_done, saver_mode,
+                    settle)
 
 
 def load_secret_key():
@@ -136,6 +137,20 @@ def prev_averages(wallet_id, month):
     return {cid: average(total, months) for cid, total in rows}
 
 
+def piggy_proposal(wallet_id, month):
+    """F14: (zaokrąglenia do pełnych złotych, niewydane limity kategorii) miesiąca w groszach."""
+    ym = month.strftime("%Y-%m")
+    roundup = g.conn.execute(
+        f"SELECT COALESCE(SUM((100 - e.amount % 100) % 100), 0) FROM expenses e"
+        f" WHERE e.wallet_id = ? AND substr(e.spent_on, 1, 7) = ? AND {APPROVED}", (wallet_id, ym)).fetchone()[0]
+    leftover = g.conn.execute(
+        "SELECT COALESCE(SUM(MAX(l.amount - COALESCE(s.total, 0), 0)), 0) FROM category_limits l"
+        " LEFT JOIN (SELECT e.category_id, SUM(e.amount) AS total FROM expenses e"
+        f"   WHERE e.wallet_id = ? AND substr(e.spent_on, 1, 7) = ? AND {APPROVED} GROUP BY e.category_id) s"
+        "   ON s.category_id = l.category_id WHERE l.wallet_id = ?", (wallet_id, ym, wallet_id)).fetchone()[0]
+    return roundup, leftover
+
+
 def needs_approval(wallet, amount):
     return wallet["kind"] == "shared" and amount > wallet["approval_threshold"]
 
@@ -229,6 +244,18 @@ def wallet(wallet_id):
         " WHERE e.wallet_id = ? AND e.status = 'pending' ORDER BY e.spent_on, e.id", (w["id"],)).fetchall()
     total = month_total(w["id"], month)
     prev_total = month_total(w["id"], shift_month(month, -1))
+    done = month_done(month, date.today())
+    piggy = g.conn.execute("SELECT COALESCE(SUM(amount), 0) FROM piggy_deposits WHERE wallet_id = ?",
+                           (w["id"],)).fetchone()[0]
+    moved = g.conn.execute("SELECT amount FROM piggy_deposits WHERE wallet_id = ? AND month = ?",
+                           (w["id"], ym)).fetchone()
+    roundup, leftover = piggy_proposal(w["id"], month) if done and not moved else (0, 0)
+    overs = [c for c in limited if c["state"] == "over"]
+    badges = achievements(
+        g.conn.execute(f"SELECT COUNT(*) FROM expenses e WHERE e.wallet_id = ? AND {APPROVED}",
+                       (w["id"],)).fetchone()[0],
+        g.conn.execute("SELECT COUNT(*) FROM category_limits WHERE wallet_id = ?", (w["id"],)).fetchone()[0],
+        len(overs), done, piggy)
     invitation = w["kind"] == "shared" and g.conn.execute(
         "SELECT code, expires_at FROM invitations WHERE wallet_id = ? AND expires_at > datetime('now')"
         " ORDER BY id DESC LIMIT 1", (w["id"],)).fetchone()
@@ -238,6 +265,8 @@ def wallet(wallet_id):
         limits={c["id"]: c["lim"] for c in limited},
         prev_total=prev_total, by_category=by_category, by_person=by_person,
         balance=balance, transfers=transfers, prefill=request.args,
+        piggy=piggy, moved=moved and moved["amount"], roundup=roundup, leftover=leftover,
+        badges=badges, penalties=[(c, PENALTIES[i % len(PENALTIES)]) for i, c in enumerate(overs)],
         categories=g.conn.execute("SELECT * FROM categories ORDER BY id").fetchall(),
         month=month, month_name=f"{MONTHS[month.month - 1]} {month.year}",
         prev_m=shift_month(month, -1).strftime("%Y-%m"),
@@ -484,6 +513,25 @@ def set_limits(wallet_id):
     else:
         flash("Limity zapisane.", "ok")
     return redirect(url_for("wallet", wallet_id=w["id"]))
+
+
+@app.post("/portfel/<int:wallet_id>/skarbonka")
+def piggy_move(wallet_id):
+    """F14: przeniesienie zaokrągleń i niewydanych limitów zakończonego miesiąca do skarbonki (raz na miesiąc).
+
+    Kwotę liczy serwer, nie formularz. Skarbonka jest wirtualna: to zapis w bazie, nie przelew.
+    """
+    w = get_wallet(wallet_id)
+    month = parse_month(request.args.get("m") or request.form.get("m"))
+    amount = sum(piggy_proposal(w["id"], month)) if month_done(month, date.today()) else 0
+    if amount <= 0:
+        flash("Nie ma teraz nic do przeniesienia do skarbonki.", "error")
+    elif g.conn.execute("INSERT OR IGNORE INTO piggy_deposits (wallet_id, month, amount) VALUES (?, ?, ?)",
+                        (w["id"], month.strftime("%Y-%m"), amount)).rowcount:
+        flash(f"Do skarbonki przeniesiono {format_zl(amount)}.", "ok")
+    else:
+        flash("Ten miesiąc jest już przeniesiony do skarbonki.", "error")
+    return redirect(url_for("wallet", wallet_id=w["id"], m=month.strftime("%Y-%m")))
 
 
 @app.post("/wydatek/<int:expense_id>/usun")

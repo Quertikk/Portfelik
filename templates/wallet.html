@@ -105,6 +105,36 @@
   {% endif %}
 </section>
 
+<section class="cards">
+  <div class="card stat">
+    <span class="label">Skarbonka (wirtualna)</span>
+    <span class="big">{{ piggy | zl }}</span>
+    {% if moved %}
+      <p class="muted">{{ month_name }}: przeniesiono {{ moved | zl }}.</p>
+    {% elif roundup + leftover %}
+      <p>Na koniec miesiąca możesz przenieść: zaokrąglenia do pełnych złotych {{ roundup | zl }}
+        i niewydane limity {{ leftover | zl }}, razem <strong>{{ (roundup + leftover) | zl }}</strong>.</p>
+      <form method="post" action="{{ url_for('piggy_move', wallet_id=wallet.id, m=month.strftime('%Y-%m')) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit">Przenieś do skarbonki</button>
+      </form>
+    {% else %}
+      <p class="muted">Po zakończeniu miesiąca zaproponujemy przeniesienie zaokrągleń i niewydanych limitów. To zapis w aplikacji, nie przelew.</p>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <span class="label">Osiągnięcia</span>
+    {% for name, desc, earned in badges %}
+      <div class="badge-row {{ 'earned' if earned }}"><strong>{{ '🏆' if earned else '🔒' }} {{ name }}</strong>
+        <div class="muted">{{ desc }}</div></div>
+    {% endfor %}
+    {% for c, penalty in penalties %}
+      <p class="limit-note over">{{ c.icon }} Limit „{{ c.name }}” przekroczony. Wirtualna kara: {{ penalty }}</p>
+    {% endfor %}
+  </div>
+</section>
+
 {% if pending %}
 <section class="card pending">
   <span class="label">Do zatwierdzenia ({{ pending | length }})</span>

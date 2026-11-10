@@ -80,6 +80,14 @@ CREATE TABLE subscriptions (
     amount       INTEGER NOT NULL CHECK (amount > 0),
     day_of_month INTEGER NOT NULL CHECK (day_of_month BETWEEN 1 AND 31)
 );
+""", """
+-- F14: skarbonka (wirtualna); jedno przeniesienie na portfel i miesiąc (month = RRRR-MM), kwota w groszach
+CREATE TABLE piggy_deposits (
+    wallet_id INTEGER NOT NULL REFERENCES wallets(id),
+    month     TEXT NOT NULL,
+    amount    INTEGER NOT NULL CHECK (amount > 0),
+    PRIMARY KEY (wallet_id, month)
+);
 """]
 
 USERS = ["Valentyn", "Daria", "Filip"]
