@@ -5,3 +5,4 @@ __pycache__/
 secret_key.txt
 .pytest_cache/
 backups/
+.coverage
