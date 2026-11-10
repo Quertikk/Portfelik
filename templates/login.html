@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Logowanie · Portfelik{% endblock %}
+{% block content %}
+<section class="card auth">
+  <h1>Logowanie</h1>
+  <form method="post" action="{{ url_for('auth.login') }}" class="stack">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="next" value="{{ next }}">
+    <label for="email">E-mail</label>
+    <input id="email" name="email" type="email" autocomplete="email" value="{{ email or '' }}" required autofocus>
+    <label for="password">Hasło</label>
+    <input id="password" name="password" type="password" autocomplete="current-password" required>
+    <button type="submit">Zaloguj się</button>
+  </form>
+  <p class="muted">Nie masz konta? <a href="{{ url_for('auth.register', next=next or None) }}">Zarejestruj się</a></p>
+</section>
+{% endblock %}

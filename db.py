@@ -1,11 +1,15 @@
 """Baza danych Portfelika (SQLite): schemat i dane demonstracyjne."""
 import sqlite3
 from datetime import date, timedelta
+from functools import cache
 from pathlib import Path
+
+from werkzeug.security import generate_password_hash
 
 DB_PATH = Path(__file__).with_name("portfelik.db")
 
-SCHEMA = """
+# Migracja n+1 to MIGRATIONS[n]; wersja bazy w PRAGMA user_version. Nowe zmiany dopisujemy na końcu, starych nie edytujemy.
+MIGRATIONS = ["""
 CREATE TABLE IF NOT EXISTS users (
     id   INTEGER PRIMARY KEY,
     name TEXT NOT NULL UNIQUE
@@ -36,9 +40,58 @@ CREATE TABLE IF NOT EXISTS expenses (
     spent_on    TEXT NOT NULL,                        -- RRRR-MM-DD
     created_at  TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-"""
+""", """
+-- F6: logowanie. SQLite nie dodaje kolumny UNIQUE, więc unikalność e-maila daje indeks.
+ALTER TABLE users ADD COLUMN email TEXT;
+ALTER TABLE users ADD COLUMN password_hash TEXT;
+CREATE UNIQUE INDEX users_email ON users(email);
+""", """
+-- F7: zaproszenia do wspólnego portfela; expires_at w formacie datetime('now') (UTC)
+CREATE TABLE invitations (
+    id         INTEGER PRIMARY KEY,
+    wallet_id  INTEGER NOT NULL REFERENCES wallets(id),
+    code       TEXT NOT NULL UNIQUE,
+    expires_at TEXT NOT NULL
+);
+""", """
+-- F8: zatwierdzanie wspólnych wydatków powyżej progu (próg w groszach, domyślnie 200 zł)
+ALTER TABLE wallets ADD COLUMN approval_threshold INTEGER NOT NULL DEFAULT 20000;
+ALTER TABLE expenses ADD COLUMN status TEXT NOT NULL DEFAULT 'approved'
+    CHECK (status IN ('pending', 'approved', 'rejected'));
+ALTER TABLE expenses ADD COLUMN decided_by INTEGER REFERENCES users(id);
+ALTER TABLE expenses ADD COLUMN decided_at TEXT;
+""", """
+-- F10: miesięczne limity kategorii w portfelu (w groszach)
+CREATE TABLE category_limits (
+    wallet_id   INTEGER NOT NULL REFERENCES wallets(id),
+    category_id INTEGER NOT NULL REFERENCES categories(id),
+    amount      INTEGER NOT NULL CHECK (amount > 0),
+    PRIMARY KEY (wallet_id, category_id)
+);
+""", """
+-- F9: komentarz do wydatku (do 200 znaków, widoczny na liście i przy zatwierdzaniu)
+ALTER TABLE expenses ADD COLUMN comment TEXT NOT NULL DEFAULT '';
+""", """
+-- F13: subskrypcje użytkownika (miesięczne); dzień 29-31 w krótszym miesiącu liczy się jako ostatni dzień
+CREATE TABLE subscriptions (
+    id           INTEGER PRIMARY KEY,
+    user_id      INTEGER NOT NULL REFERENCES users(id),
+    name         TEXT NOT NULL,
+    amount       INTEGER NOT NULL CHECK (amount > 0),
+    day_of_month INTEGER NOT NULL CHECK (day_of_month BETWEEN 1 AND 31)
+);
+""", """
+-- F14: skarbonka (wirtualna); jedno przeniesienie na portfel i miesiąc (month = RRRR-MM), kwota w groszach
+CREATE TABLE piggy_deposits (
+    wallet_id INTEGER NOT NULL REFERENCES wallets(id),
+    month     TEXT NOT NULL,
+    amount    INTEGER NOT NULL CHECK (amount > 0),
+    PRIMARY KEY (wallet_id, month)
+);
+"""]
 
 USERS = ["Valentyn", "Daria", "Filip"]
+DEMO_PASSWORD = "demo1234"  # opisane w README; konta demo tylko w trybie deweloperskim
 CATEGORIES = [
     ("Jedzenie", "🛒"), ("Restauracje i kawiarnie", "☕"), ("Transport", "🚌"),
     ("Rachunki", "💡"), ("Rozrywka", "🎬"), ("Zakupy", "🛍️"),
@@ -54,27 +107,42 @@ def connect():
     return conn
 
 
-def init_db():
-    """Tworzy tabele; przy pustej bazie dodaje dane demonstracyjne."""
+def migrate(conn):
+    """Stosuje brakujące migracje; każda w jednej transakcji razem z podniesieniem user_version."""
+    version = conn.execute("PRAGMA user_version").fetchone()[0]
+    for n, script in enumerate(MIGRATIONS[version:], start=version + 1):
+        conn.executescript(f"BEGIN;{script};PRAGMA user_version = {n};COMMIT;")
+
+
+def init_db(demo=False):
+    """Migruje schemat i dodaje kategorie; z demo=True pusta baza dostaje konta i wydatki demonstracyjne."""
     with connect() as conn:
-        conn.executescript(SCHEMA)
-        if conn.execute("SELECT COUNT(*) FROM users").fetchone()[0] == 0:
+        migrate(conn)
+        if conn.execute("SELECT COUNT(*) FROM categories").fetchone()[0] == 0:
+            conn.executemany("INSERT INTO categories (name, icon) VALUES (?, ?)", CATEGORIES)
+        if demo and conn.execute("SELECT COUNT(*) FROM users").fetchone()[0] == 0:
             _seed(conn)
+
+
+@cache
+def demo_hash():
+    return generate_password_hash(DEMO_PASSWORD)  # jeden skrót na proces: scrypt jest celowo wolny
 
 
 def _seed(conn):
     for name in USERS:
-        conn.execute("INSERT INTO users (name) VALUES (?)", (name,))
-    conn.executemany("INSERT INTO categories (name, icon) VALUES (?, ?)", CATEGORIES)
+        conn.execute("INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)",
+                     (name, f"{name.lower()}@demo.pl", demo_hash()))
 
-    users = {r["name"]: r["id"] for r in conn.execute("SELECT id, name FROM users")}
+    users = {r["name"]: r["id"] for r in conn.execute("SELECT id, name FROM users ORDER BY id")}
     for name, uid in users.items():
         wid = conn.execute(
             "INSERT INTO wallets (name, kind, owner_id) VALUES (?, 'personal', ?)",
             (f"Portfel: {name}", uid)).lastrowid
         conn.execute("INSERT INTO wallet_members VALUES (?, ?)", (wid, uid))
     shared = conn.execute(
-        "INSERT INTO wallets (name, kind) VALUES (?, 'shared')", (SHARED_WALLET,)).lastrowid
+        "INSERT INTO wallets (name, kind, owner_id) VALUES (?, 'shared', ?)",
+        (SHARED_WALLET, users[USERS[0]])).lastrowid
     for uid in users.values():
         conn.execute("INSERT INTO wallet_members VALUES (?, ?)", (shared, uid))
 
@@ -107,3 +175,8 @@ def _seed(conn):
             "INSERT INTO expenses (wallet_id, user_id, category_id, amount, description, spent_on)"
             " VALUES (?, ?, ?, ?, ?, ?)",
             (wallet, users[who], cats[cat], round(zl * 100), desc, spent.isoformat()))
+    # wydatek powyżej progu 200 zł, czeka na decyzję kogoś innego niż Daria
+    conn.execute(
+        "INSERT INTO expenses (wallet_id, user_id, category_id, amount, description, spent_on, status)"
+        " VALUES (?, ?, ?, 34900, 'Nowa pralka (połowa ceny)', ?, 'pending')",
+        (shared, users["Daria"], cats["Zakupy"], first.isoformat()))

@@ -37,20 +37,35 @@ Kolejność realizacji i szacunki znajdują się w [backlog.md](backlog.md).
 
 ## 5. Rola AI
 
-AI wykonuje w aplikacji realną pracę, której użytkownik inaczej musiałby dokonać ręcznie:
+AI przejmuje pracę, którą użytkownik inaczej musiałby wykonać ręcznie:
 
 1. **Rozpoznawanie paragonu:** zdjęcie paragonu jest wysyłane do modelu AI, który zwraca kwotę, datę, nazwę sklepu i proponowaną kategorię. Użytkownik tylko sprawdza i zatwierdza.
-2. **Podsumowanie miesiąca (opcjonalnie):** krótki opis słowny, gdzie wydano więcej niż zwykle i co można ograniczyć.
+2. **Podsumowanie miesiąca (opcjonalnie, nie zrealizowane, poza backlogiem):** krótki opis słowny, gdzie wydano więcej niż zwykle i co można ograniczyć.
 
 ## 6. Ograniczenia
 
 - **Brak integracji z bankami.** Pobieranie transakcji z banku wymaga licencji i umów z bankami (dyrektywa PSD2), co wykracza poza projekt. Wydatki są dodawane ręcznie albo ze zdjęcia paragonu.
 - **Pieniądze są wirtualne.** Skarbonka i „kary” są zapisami w aplikacji, nie przelewami.
-- **Uproszczone logowanie w pierwszej wersji.** W sprincie 0 użytkownika wybiera się z listy; pełne logowanie z hasłem jest zaplanowane w sprincie 1.
+- **Hasła bez odzyskiwania.** Logowanie działa na e-mailu i haśle (skrót w bazie), ale aplikacja nie wysyła wiadomości, więc nie ma resetu hasła.
+- **Jeden plik bazy.** SQLite wystarcza dla małej grupy użytkowników; przy większym ruchu trzeba by przejść na PostgreSQL.
 
-## 7. Technologie
+## 7. Technologie, narzędzia i biblioteki
 
-- Python 3 + Flask: prosty serwer, łatwy do uruchomienia i opisania w dokumentacji.
-- SQLite: baza w jednym pliku, nie wymaga instalacji serwera bazy danych.
-- HTML + CSS: interfejs działający w przeglądarce na komputerze i telefonie.
-- API modelu AI (Gemini lub Claude) do rozpoznawania paragonów.
+Koncepcja tworzenia oprogramowania: małe przyrosty w dwutygodniowych sprintach (Scrum), każda zmiana w Pull Requeście z recenzją drugiej osoby i testem automatycznym, wdrożenie na serwer po zielonych testach.
+
+| Obszar | Wybór | Uzasadnienie |
+|---|---|---|
+| Język i serwer | Python 3 + Flask | Prosty serwer, łatwy do uruchomienia i opisania |
+| Szablony | Jinja2 (w Flasku), HTML + CSS bez frameworka | Interfejs na telefonie i komputerze bez kroku budowania |
+| Baza danych | SQLite, migracje własne (lista `MIGRATIONS`, `PRAGMA user_version`) | Jeden plik, bez serwera bazy; kopia przez `sqlite3 .backup` |
+| Bezpieczeństwo | Flask-WTF (CSRF), `werkzeug.security` (skróty haseł) | Gotowe, sprawdzone mechanizmy zamiast własnych |
+| AI | Gemini (Google), wywołanie przez `urllib` z biblioteki standardowej | Odczyt paragonu ze zdjęcia; dostawca wymienny przez `receipts.PROVIDERS`; bez dodatkowej biblioteki |
+| Testy | pytest; `coverage` do pomiaru pokrycia; GitHub Actions | Testy przy każdym Pull Requeście |
+| Kontrola wersji i backlog | Git, GitHub (Issues, Projects, Pull Requesty) | Jedna Issue na pozycję F i NF |
+| Hosting | PythonAnywhere (HTTPS, trwały dysk, zadanie okresowe kopii) | Darmowe konto wystarcza do oddania projektu |
+| Diagramy | Mermaid w plikach Markdown | Diagramy w repozytorium, bez osobnego programu |
+| Asystenci AI | Claude (kod i dokumentacja techniczna), Gemini (grafiki, prezentacje) | Za wynik odpowiadają osoby; kod przechodzi recenzję i testy |
+
+## 8. Układy elektroniczne i mechaniczne
+
+Projekt jest wyłącznie oprogramowaniem, więc nie zawiera układów elektronicznych ani mechanicznych. Wymaganie o schematach takich układów (wytyczna 7) nie dotyczy projektu. Zamiast nich dokumentujemy architekturę i procesy diagramami UML w [uml.md](uml.md) oraz diagramem architektury w [specyfikacji](specyfikacja.md#4-architektura).

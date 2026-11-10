@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Subskrypcje · Portfelik{% endblock %}
+{% block content %}
+<a href="{{ url_for('index') }}">‹ Wróć do portfela</a>
+<section class="card">
+  <span class="label">Moje subskrypcje</span>
+  <p class="muted">Płatności co miesiąc. Na 2 dni przed płatnością pokażemy przypomnienie. Dzień 29–31 w krótszym miesiącu liczy się jako jego ostatni dzień.</p>
+  <table>
+    <thead><tr><th>Nazwa</th><th>Dzień</th><th class="num">Kwota</th><th><span class="sr-only">Akcje</span></th></tr></thead>
+    <tbody>
+    {% for s in subs %}
+      <tr>
+        <td>{{ s.name }}</td><td>{{ s.day_of_month }}.</td><td class="num">{{ s.amount | zl }}</td>
+        <td><div class="row-actions">
+          <form method="post" action="{{ url_for('delete_subscription', sub_id=s.id) }}"
+                data-confirm="Usunąć tę subskrypcję?">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="link" title="Usuń" aria-label="Usuń subskrypcję {{ s.name }}">✕</button>
+          </form>
+        </div></td>
+      </tr>
+    {% else %}
+      <tr><td colspan="4" class="empty">Nie masz jeszcze subskrypcji.</td></tr>
+    {% endfor %}
+    </tbody>
+    {% if subs %}<tfoot><tr><th colspan="2">Razem miesięcznie</th><th class="num">{{ monthly | zl }}</th><th></th></tr></tfoot>{% endif %}
+  </table>
+</section>
+
+<section class="card">
+  <span class="label">Dodaj subskrypcję</span>
+  <form method="post" action="{{ url_for('subscriptions') }}" class="sub-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input name="name" placeholder="Nazwa, np. Spotify" aria-label="Nazwa" maxlength="60" required>
+    <input name="amount" inputmode="decimal" placeholder="Kwota, np. 23,99" aria-label="Kwota" required>
+    <input name="day" type="number" min="1" max="31" placeholder="Dzień (1–31)" aria-label="Dzień płatności" required>
+    <button type="submit">Dodaj</button>
+  </form>
+</section>
+{% endblock %}

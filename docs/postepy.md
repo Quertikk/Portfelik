@@ -1,6 +1,6 @@
 # Dziennik postępów
 
-Po każdym spotkaniu dopisujemy: co zostało zrobione (kto co zrobił), jakie były problemy i plan na kolejny tydzień.
+Po każdym spotkaniu dopisujemy: co zrobiono (kto co zrobił), jakie były problemy i plan na kolejny tydzień. Na końcu sprintu dochodzi przegląd (co pokazaliśmy Właścicielowi produktu i jakie dał uwagi) oraz retrospektywa: co poszło dobrze, co poprawić, a każde działanie ma osobę, termin i warunek ukończenia.
 
 ---
 
@@ -10,7 +10,7 @@ Po każdym spotkaniu dopisujemy: co zostało zrobione (kto co zrobił), jakie by
 
 | Osoba | Wykonane prace |
 |---|---|
-| Valentyn (Lider) | Uzgodnienie zmiany tematu, organizacja zespołu w nowym składzie i podział ról, wybór technologii, przygotowanie repozytorium, pierwsza wersja aplikacji (z pomocą Claude) |
+| Valentyn (Scrum Master) | Uzgodnienie zmiany tematu, organizacja zespołu w nowym składzie i podział ról, wybór technologii, przygotowanie repozytorium, pierwsza wersja aplikacji (z pomocą Claude) |
 | Daria (Właściciel produktu) | Koncepcja funkcji aplikacji (portfele, zatwierdzanie wydatków, limity, skarbonka, subskrypcje, grywalizacja), ustalenie priorytetów w backlogu |
 | Filip (Zespół) | Dołączenie do zespołu, zapoznanie się z koncepcją, przegląd pierwszej wersji interfejsu, zgłoszenie dwóch błędów (uruchomienie na Windows, widok na telefonie) |
 
@@ -36,3 +36,31 @@ Po każdym spotkaniu dopisujemy: co zostało zrobione (kto co zrobił), jakie by
 - Specyfikacja wymagań i makiety ekranów zatwierdzania i limitów (Daria).
 - Baza danych pod użytkowników i wspólne portfele; decyzja: SQLite czy PostgreSQL (Valentyn).
 - Logowanie z hasłem i wybór serwera do wdrożenia aplikacji (Filip).
+
+---
+
+## Próbka F11 i test akceptacyjny odczytu paragonów – 10.11.2026
+
+Dziesięć zdjęć prawdziwych paragonów (BUDMED, stacje ANWIM/Moya i ORLEN, Lidl, cukiernia, zajazd; różna jakość: zagniecione, obrócone, nieostre). Wzorzec kwot, dat i sklepów spisał Claude ze zdjęć (bez udziału modelu Gemini), a Filip go potwierdził i poprawił (kwota z kaucją, nazwa zajazdu). Uruchomienie: `python scripts/receipt_spike.py <katalog> <arkusz.csv>`.
+
+| Wynik | Wartość |
+|---|---|
+| Poprawne kwoty co do grosza | **9 z 10** (cel: 8 z 10), test zaliczony |
+| Poprawne daty | 10 z 10 |
+| Nazwa sklepu zgodna z arkuszem | 7 z 10 (model podaje markę stacji „Moya” zamiast spółki „ANWIM” i nazwę z pozycji zamiast nazwy baru) |
+| Model | `gemini-3.5-flash-lite` |
+
+**Błąd:** paragon Lidl z kaucją za opakowania (SUMA 72,20, DO ZAPŁATY 73,20) model odczytał jako 72,20, bo prompt prosił o „SUMA PLN”. Prompt poprawiony: kwota to pozycja „DO ZAPŁATY”, a gdy jej nie ma, „SUMA PLN”. Poprawkę trzeba potwierdzić ponownym uruchomieniem.
+
+### Problemy po drodze
+
+- **Model wycofany:** `gemini-2.5-flash` zwracał HTTP 404 dla nowego klucza. Domyślny model zmieniony po sprawdzeniu dokumentacji Google (patrz `docs/opis-techniczny.md`, sekcja Decyzje).
+- **Przeciążenie (HTTP 503) i timeouty:** `receipts.gemini` ponawia teraz żądanie do 3 razy.
+- **Limit darmowego planu:** `gemini-3.8-flash` ma 20 zapytań dziennie i wyczerpał się w teście. `gemini-3.5-flash-lite` ma ok. 500 dziennie.
+- **Limit zdjęcia 5 MB:** jedno zdjęcie z telefonu (5,7 MB) przekraczało limit aplikacji; do testu zostało zmniejszone. Zdjęcia z nowych telefonów mogą przekraczać 5 MB, co jest ograniczeniem aplikacji.
+
+### Do zrobienia
+
+- Uruchomić próbkę na serwerze PythonAnywhere (klucz w pliku WSGI, dostęp do `generativelanguage.googleapis.com`).
+- ~~Ustalić limit kosztów.~~ Decyzja 10.11.2026: model Gemini 3.5 Flash-Lite, darmowy plan (koszt 0, limit dzienny wystarcza), bez płatnych rozliczeń.
+

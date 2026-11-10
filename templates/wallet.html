@@ -1,18 +1,36 @@
 {% extends "base.html" %}
 {% block title %}{{ wallet.name }} · Portfelik{% endblock %}
 {% block content %}
-<nav class="tabs">
-  <a href="{{ url_for('wallet', kind='personal', m=month.strftime('%Y-%m')) }}"
-     class="{% if kind == 'personal' %}active{% endif %}">Mój portfel</a>
-  <a href="{{ url_for('wallet', kind='shared', m=month.strftime('%Y-%m')) }}"
-     class="{% if kind == 'shared' %}active{% endif %}">Wspólny portfel</a>
+{% set shared = wallet.kind == 'shared' %}
+<nav class="tabs" aria-label="Moje portfele">
+  {% for w in wallets %}
+    <a href="{{ url_for('wallet', wallet_id=w.id, m=month.strftime('%Y-%m')) }}"
+       class="{% if w.id == wallet.id %}active{% endif %}"
+       {% if w.id == wallet.id %}aria-current="page"{% endif %}>{{ 'Mój portfel' if w.kind == 'personal' else w.name }}</a>
+  {% endfor %}
 </nav>
+<details class="new-wallet">
+  <summary>+ Nowy wspólny portfel</summary>
+  <form method="post" action="{{ url_for('new_wallet') }}" class="inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label for="wallet_name" class="sr-only">Nazwa portfela</label>
+    <input id="wallet_name" name="name" maxlength="60" placeholder="Nazwa, np. Wspólne mieszkanie" required>
+    <button type="submit">Utwórz</button>
+  </form>
+</details>
 
 <section class="month">
-  <a href="{{ url_for('wallet', kind=kind, m=prev_m) }}" aria-label="Poprzedni miesiąc">‹</a>
-  <h1>{{ wallet.name if kind == 'shared' else 'Moje wydatki' }} · {{ month_name }}</h1>
-  <a href="{{ url_for('wallet', kind=kind, m=next_m) }}" aria-label="Następny miesiąc">›</a>
+  <a href="{{ url_for('wallet', wallet_id=wallet.id, m=prev_m) }}" aria-label="Poprzedni miesiąc">‹</a>
+  <h1>{{ wallet.name if shared else 'Moje wydatki' }} · {{ month_name }}</h1>
+  <a href="{{ url_for('wallet', wallet_id=wallet.id, m=next_m) }}" aria-label="Następny miesiąc">›</a>
 </section>
+
+{% if saver %}
+<div class="flash saver" role="status">
+  <strong>Tryb Oszczędny.</strong> W kategoriach z limitem wydano już ponad 80% sumy limitów, a miesiąc jeszcze trwa.
+  Odłóż większe zakupy na następny miesiąc.
+</div>
+{% endif %}
 
 <section class="cards">
   <div class="card stat">
@@ -28,75 +46,211 @@
 
   <div class="card">
     <span class="label">Według kategorii</span>
+    {% if by_category | selectattr('avg') | list %}<p class="muted legend"><span class="avg"></span> średnia z 3 poprzednich miesięcy</p>{% endif %}
     {% for c in by_category %}
       <div class="bar-row">
-        <span>{{ c.icon }} {{ c.name }}</span><span>{{ c.total | zl }}</span>
+        <span>{{ c.icon }} {{ c.name }}</span>
+        <span>{{ c.total | zl }}{% if c.lim %} <span class="muted">/ {{ c.lim | zl }}</span>{% endif %}</span>
       </div>
-      <div class="bar"><div style="width: {{ (c.total * 100 / total) | round | int }}%"></div></div>
+      <div class="bar {{ c.state or '' }}"><div style="width: {{ c.fill | round(1) }}%"></div>
+        {% if c.avg_pct is not none %}<span class="avg" style="left: {{ c.avg_pct | round(1) }}%"></span>{% endif %}</div>
+      {% if c.lim %}
+        {% set pct = (c.total * 100 / c.lim) | round | int %}
+        {% if c.state == 'warn' %}<span class="limit-note warn">{{ pct }}% limitu</span>
+        {% elif c.state == 'over' %}<span class="limit-note over">Limit przekroczony o {{ (c.total - c.lim) | zl }}</span>{% endif %}
+      {% endif %}
+      {% if c.avg %}<span class="avg-note">średnia z 3 miesięcy: {{ c.avg | zl }}</span>{% endif %}
     {% else %}
       <p class="empty">Brak wydatków w tym miesiącu.</p>
     {% endfor %}
   </div>
 
-  {% if kind == 'shared' %}
+  {% if shared %}
   <div class="card">
     <span class="label">Kto ile zapłacił</span>
     {% for p in by_person %}
       <div class="bar-row"><span>{{ p.name }}</span><span>{{ p.total | zl }}</span></div>
     {% endfor %}
   </div>
+
+  <div class="card">
+    <span class="label">Rozliczenie · {{ month_name }}</span>
+    {% for p in by_person %}
+      <div class="bar-row"><span>{{ p.name }}</span>
+        {% set b = balance[p.name] %}
+        <span class="{{ 'plus' if b > 0 else 'minus' if b < 0 }}">{{ '+' if b > 0 }}{{ b | zl }}</span></div>
+    {% endfor %}
+    {% for from, to, amount in transfers %}
+      <p class="transfer"><strong>{{ from }}</strong> → <strong>{{ to }}</strong>: {{ amount | zl }}</p>
+    {% else %}
+      <p class="muted">Wszyscy są rozliczeni.</p>
+    {% endfor %}
+    <p class="muted">Równy podział zatwierdzonych wydatków. Plus to nadpłata, minus to dług.</p>
+  </div>
+
+  <div class="card">
+    <span class="label">Zaproś do portfela</span>
+    {% if invitation %}
+      <label for="invite_link" class="muted">Link ważny do {{ invitation.expires_at[:16] }} (UTC):</label>
+      <input id="invite_link" class="wide" readonly value="{{ url_for('join', code=invitation.code, _external=True) }}"
+             data-select>
+    {% else %}
+      <p class="muted">Utwórz link i wyślij go osobie, która ma dołączyć. Po zalogowaniu trafi do tego portfela.</p>
+    {% endif %}
+    <form method="post" action="{{ url_for('invite', wallet_id=wallet.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="secondary">{{ 'Nowy link' if invitation else 'Utwórz link zaproszenia' }}</button>
+    </form>
+  </div>
   {% endif %}
 </section>
 
+<section class="cards">
+  <div class="card stat">
+    <span class="label">Skarbonka (wirtualna)</span>
+    <span class="big">{{ piggy | zl }}</span>
+    {% if moved %}
+      <p class="muted">{{ month_name }}: przeniesiono {{ moved | zl }}.</p>
+    {% elif roundup + leftover %}
+      <p>Na koniec miesiąca możesz przenieść: zaokrąglenia do pełnych złotych {{ roundup | zl }}
+        i niewydane limity {{ leftover | zl }}, razem <strong>{{ (roundup + leftover) | zl }}</strong>.</p>
+      <form method="post" action="{{ url_for('piggy_move', wallet_id=wallet.id, m=month.strftime('%Y-%m')) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit">Przenieś do skarbonki</button>
+      </form>
+    {% else %}
+      <p class="muted">Po zakończeniu miesiąca zaproponujemy przeniesienie zaokrągleń i niewydanych limitów. To zapis w aplikacji, nie przelew.</p>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <span class="label">Osiągnięcia</span>
+    {% for name, desc, earned in badges %}
+      <div class="badge-row {{ 'earned' if earned }}"><strong>{{ '🏆' if earned else '🔒' }} {{ name }}</strong>
+        <div class="muted">{{ desc }}</div></div>
+    {% endfor %}
+    {% for c, penalty in penalties %}
+      <p class="limit-note over">{{ c.icon }} Limit „{{ c.name }}” przekroczony. Wirtualna kara: {{ penalty }}</p>
+    {% endfor %}
+  </div>
+</section>
+
+{% if pending %}
+<section class="card pending">
+  <span class="label">Do zatwierdzenia ({{ pending | length }})</span>
+  <p class="muted">Wydatki powyżej {{ wallet.approval_threshold | zl }} wchodzą do sum dopiero po zatwierdzeniu przez innego członka portfela.</p>
+  {% for e in pending %}
+    <div class="decision">
+      <div>
+        <strong>{{ e.amount | zl }}</strong> · {{ e.icon }} {{ e.category }} · {{ e.who }}, {{ e.spent_on[8:10] }}.{{ e.spent_on[5:7] }}
+        {% if e.description %}<div class="muted">{{ e.description }}</div>{% endif %}
+        {% if e.comment %}<div class="comment">💬 {{ e.comment }}</div>{% endif %}
+      </div>
+      {% if e.user_id == g.user.id %}
+        <span class="muted">Czeka na decyzję innej osoby</span>
+      {% else %}
+        <div class="actions">
+          <form method="post" action="{{ url_for('approve_expense', expense_id=e.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit">Zatwierdź</button>
+          </form>
+          <form method="post" action="{{ url_for('reject_expense', expense_id=e.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="secondary danger">Odrzuć</button>
+          </form>
+        </div>
+      {% endif %}
+    </div>
+  {% endfor %}
+</section>
+{% endif %}
+
 <section class="card">
   <span class="label">Dodaj wydatek</span>
-  <form method="post" action="{{ url_for('add_expense', kind=kind) }}" class="add">
-    <input name="amount" inputmode="decimal" placeholder="Kwota, np. 12,50" required>
-    <select name="category_id" required>
-      {% for c in categories %}<option value="{{ c.id }}">{{ c.icon }} {{ c.name }}</option>{% endfor %}
+  <form method="post" action="{{ url_for('add_expense', wallet_id=wallet.id) }}" class="add">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input name="amount" inputmode="decimal" placeholder="Kwota, np. 12,50" aria-label="Kwota" required
+           value="{{ prefill.amount }}">
+    <select name="category_id" aria-label="Kategoria" required>
+      {% for c in categories %}<option value="{{ c.id }}" {{ 'selected' if prefill.category_id == c.id | string }}>{{ c.icon }} {{ c.name }}</option>{% endfor %}
     </select>
-    <input name="description" placeholder="Opis (opcjonalnie)" maxlength="200">
-    <input name="spent_on" type="date" value="{{ today }}">
+    <input name="description" placeholder="Opis (opcjonalnie)" aria-label="Opis" maxlength="200"
+           value="{{ prefill.description }}">
+    <input name="spent_on" type="date" aria-label="Data" value="{{ prefill.spent_on or today }}">
     <button type="submit">Dodaj</button>
+    <input name="comment" class="full" maxlength="200" aria-label="Komentarz"
+           placeholder="Komentarz dla współlokatorów (opcjonalnie), np. dlaczego tak drogo">
+  </form>
+  <form method="post" action="{{ url_for('receipt', wallet_id=wallet.id) }}" enctype="multipart/form-data" class="receipt">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label for="receipt_file">📷 Dodaj ze zdjęcia paragonu (JPG lub PNG, do 5 MB)</label>
+    <input id="receipt_file" name="receipt" type="file" accept="image/jpeg,image/png" required>
+    <button type="submit" class="secondary">Odczytaj paragon</button>
+    <p class="muted">Zdjęcie zostanie wysłane do zewnętrznego modelu AI (Google Gemini) tylko po to, by odczytać dane.
+      Portfelik go nie zapisuje. Odczytane dane sprawdź, zanim klikniesz „Dodaj”.</p>
   </form>
 </section>
 
 <section class="card">
-  <span class="label">Lista wydatków</span>
+  <span class="label">Lista wydatków
+    <a class="export" href="{{ url_for('export_csv', wallet_id=wallet.id, m=month.strftime('%Y-%m')) }}">Pobierz CSV</a></span>
   <table>
-    <thead><tr><th>Data</th><th>Kategoria</th><th>Opis</th>{% if kind == 'shared' %}<th>Kto</th>{% endif %}<th class="num">Kwota</th><th></th></tr></thead>
+    <thead><tr><th>Data</th><th>Wydatek</th>{% if shared %}<th>Kto</th>{% endif %}<th class="num">Kwota</th><th><span class="sr-only">Akcje</span></th></tr></thead>
     <tbody>
     {% for e in expenses %}
       <tr>
         <td>{{ e.spent_on[8:10] }}.{{ e.spent_on[5:7] }}</td>
-        <td>{{ e.icon }} {{ e.category }}</td>
-        <td>{{ e.description }}</td>
-        {% if kind == 'shared' %}<td>{{ e.who }}</td>{% endif %}
-        <td class="num">{{ e.amount | zl }}</td>
+        <td>{{ e.icon }} {{ e.category }}
+          {% if e.description %}<div class="muted">{{ e.description }}</div>{% endif %}
+          {% if e.comment %}<div class="comment">💬 {{ e.comment }}</div>{% endif %}</td>
+        {% if shared %}<td>{{ e.who }}</td>{% endif %}
+        <td class="num {{ e.status }}">{{ e.amount | zl }}
+          {% if e.status == 'pending' %}<span class="status">oczekuje</span>
+          {% elif e.status == 'rejected' %}<span class="status">odrzucony</span>{% endif %}</td>
         <td>
           {% if e.user_id == g.user.id %}
+          <div class="row-actions">
+          <a class="link" href="{{ url_for('edit_expense', expense_id=e.id) }}" title="Edytuj" aria-label="Edytuj wydatek">✎</a>
           <form method="post" action="{{ url_for('delete_expense', expense_id=e.id) }}"
-                onsubmit="return confirm('Usunąć ten wydatek?')">
-            <button class="link" title="Usuń">✕</button>
+                data-confirm="Usunąć ten wydatek?">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="link" title="Usuń" aria-label="Usuń wydatek">✕</button>
           </form>
+          </div>
           {% endif %}
         </td>
       </tr>
     {% else %}
-      <tr><td colspan="6" class="empty">Brak wydatków w tym miesiącu.</td></tr>
+      <tr><td colspan="5" class="empty">Brak wydatków w tym miesiącu.</td></tr>
     {% endfor %}
     </tbody>
   </table>
 </section>
 
-<section class="card soon">
-  <span class="label">W przygotowaniu</span>
-  <ul>
-    <li>🔒 Logowanie z hasłem <em>(sprint 1)</em></li>
-    <li>✅ Zatwierdzanie wspólnych wydatków powyżej progu <em>(sprint 1)</em></li>
-    <li>📊 Limity budżetu i tryb „Oszczędny” <em>(sprint 1)</em></li>
-    <li>📷 Dodawanie wydatku ze zdjęcia paragonu przez AI <em>(sprint 2)</em></li>
-    <li>🔁 Subskrypcje i przypomnienia <em>(sprint 2)</em></li>
-  </ul>
-</section>
+{% if wallet.owner_id == g.user.id %}
+<details class="card settings">
+  <summary class="label">Ustawienia portfela</summary>
+  <h2>Miesięczne limity kategorii (zł)</h2>
+  <p class="muted">Puste pole oznacza brak limitu. Ostrzeżenie pojawia się po wydaniu 80% limitu.</p>
+  <form method="post" action="{{ url_for('set_limits', wallet_id=wallet.id) }}" class="limits">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {% for c in categories %}
+      <label for="limit_{{ c.id }}">{{ c.icon }} {{ c.name }}</label>
+      <input id="limit_{{ c.id }}" name="limit_{{ c.id }}" inputmode="decimal"
+             value="{{ limits[c.id] | amount if limits[c.id] }}">
+    {% endfor %}
+    <button type="submit">Zapisz limity</button>
+  </form>
+  {% if shared %}
+  <h2>Zatwierdzanie wydatków</h2>
+  <form method="post" action="{{ url_for('set_threshold', wallet_id=wallet.id) }}" class="inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label for="threshold">Próg zatwierdzania (zł)</label>
+    <input id="threshold" name="threshold" inputmode="decimal" value="{{ wallet.approval_threshold | amount }}" required>
+    <button type="submit">Zapisz próg</button>
+  </form>
+  {% endif %}
+</details>
+{% endif %}
+
 {% endblock %}

@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Rejestracja · Portfelik{% endblock %}
+{% block content %}
+<section class="card auth">
+  <h1>Rejestracja</h1>
+  <form method="post" action="{{ url_for('auth.register') }}" class="stack">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="next" value="{{ next }}">
+    <label for="name">Nazwa (widoczna dla współlokatorów)</label>
+    <input id="name" name="name" autocomplete="nickname" maxlength="50" value="{{ name or '' }}" required autofocus>
+    <label for="email">E-mail</label>
+    <input id="email" name="email" type="email" autocomplete="email" value="{{ email or '' }}" required>
+    <label for="password">Hasło (co najmniej 8 znaków)</label>
+    <input id="password" name="password" type="password" autocomplete="new-password" minlength="8" required>
+    <button type="submit">Załóż konto</button>
+  </form>
+  <p class="muted">Masz już konto? <a href="{{ url_for('auth.login', next=next or None) }}">Zaloguj się</a></p>
+</section>
+{% endblock %}
