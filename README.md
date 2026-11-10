@@ -75,6 +75,7 @@ requirements.txt  zależności Pythona
 | [docs/harmonogram.md](docs/harmonogram.md) | Sprinty, wykres Gantta, podział prac (WBS), macierz RAM |
 | [docs/postepy.md](docs/postepy.md) | Dziennik postępów z cotygodniowych spotkań |
 | [docs/testy.md](docs/testy.md) | Scenariusze testowe z odwołaniem do testów automatycznych |
+| [docs/makiety.md](docs/makiety.md) | Makiety ekranów zatwierdzania (F8) i limitów (F10) do akceptacji Właściciela produktu |
 
 ## Status
 
