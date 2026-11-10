@@ -5,6 +5,15 @@ from datetime import date
 WARN_PERCENT = 80
 
 
+def parse_amount(text):
+    """'12,50' / '12.5' / '12' -> 1250 groszy; None przy błędnej kwocie."""
+    try:
+        value = round(float(text.replace(" ", "").replace(",", ".")) * 100)
+    except (AttributeError, ValueError, OverflowError):  # OverflowError: "inf", "1e999"
+        return None
+    return value if 0 < value <= 100_000_000 else None
+
+
 def limit_state(spent, limit):
     """'ok', 'warn' od 80% limitu, 'over' po przekroczeniu limitu."""
     if spent > limit:

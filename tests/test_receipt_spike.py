@@ -2,7 +2,8 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
-from receipt_spike import CATEGORIES, SCHEMA, check, grosze  # noqa: E402
+from receipt_spike import CATEGORIES, SCHEMA, check  # noqa: E402
+from receipts import receipt_amount as grosze  # noqa: E402
 
 
 def test_grosze_formats():

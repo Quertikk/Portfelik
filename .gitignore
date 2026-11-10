@@ -3,6 +3,7 @@ __pycache__/
 *.pyc
 .venv/
 secret_key.txt
+.env
 .pytest_cache/
 backups/
 .coverage

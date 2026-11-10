@@ -99,3 +99,13 @@ def test_user_gets_404_for_foreign_wallet(app, client, wallet):
 
 def test_nonexistent_wallet_is_404(client):
     assert client.get("/portfel/9999").status_code == 404
+
+
+def test_new_invitation_link_revokes_previous_one(app, client):
+    wid = new_wallet(client)
+    old = invite_code(client, wid)
+    new = invite_code(client, wid)
+    assert old != new
+    assert [r["code"] for r in query("SELECT code FROM invitations WHERE wallet_id = ?", wid)] == [new]
+    other = login(app.test_client(), "Daria")
+    assert "wygasło" in other.get(f"/dolacz/{old}", follow_redirects=True).get_data(as_text=True)

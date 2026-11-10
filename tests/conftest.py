@@ -4,11 +4,17 @@ from pathlib import Path
 import pytest
 
 import db
+import throttle
 
 # app.py wywołuje db.init_db() przy imporcie, więc ścieżkę podmieniamy przed importem (nie dotykamy portfelik.db).
 db.DB_PATH = Path(tempfile.mkdtemp()) / "import.db"
 
 import app as app_module  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def reset_throttle():
+    throttle._hits.clear()
 
 
 @pytest.fixture

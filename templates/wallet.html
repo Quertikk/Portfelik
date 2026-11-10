@@ -93,7 +93,7 @@
     {% if invitation %}
       <label for="invite_link" class="muted">Link ważny do {{ invitation.expires_at[:16] }} (UTC):</label>
       <input id="invite_link" class="wide" readonly value="{{ url_for('join', code=invitation.code, _external=True) }}"
-             onfocus="this.select()">
+             data-select>
     {% else %}
       <p class="muted">Utwórz link i wyślij go osobie, która ma dołączyć. Po zalogowaniu trafi do tego portfela.</p>
     {% endif %}
@@ -212,7 +212,7 @@
           <div class="row-actions">
           <a class="link" href="{{ url_for('edit_expense', expense_id=e.id) }}" title="Edytuj" aria-label="Edytuj wydatek">✎</a>
           <form method="post" action="{{ url_for('delete_expense', expense_id=e.id) }}"
-                onsubmit="return confirm('Usunąć ten wydatek?')">
+                data-confirm="Usunąć ten wydatek?">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button class="link" title="Usuń" aria-label="Usuń wydatek">✕</button>
           </form>
@@ -237,7 +237,7 @@
     {% for c in categories %}
       <label for="limit_{{ c.id }}">{{ c.icon }} {{ c.name }}</label>
       <input id="limit_{{ c.id }}" name="limit_{{ c.id }}" inputmode="decimal"
-             value="{{ ('%.2f' | format(limits[c.id] / 100) | replace('.', ',')) if limits[c.id] }}">
+             value="{{ limits[c.id] | amount if limits[c.id] }}">
     {% endfor %}
     <button type="submit">Zapisz limity</button>
   </form>
@@ -246,7 +246,7 @@
   <form method="post" action="{{ url_for('set_threshold', wallet_id=wallet.id) }}" class="inline">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <label for="threshold">Próg zatwierdzania (zł)</label>
-    <input id="threshold" name="threshold" inputmode="decimal" value="{{ '%.2f' | format(wallet.approval_threshold / 100) | replace('.', ',') }}" required>
+    <input id="threshold" name="threshold" inputmode="decimal" value="{{ wallet.approval_threshold | amount }}" required>
     <button type="submit">Zapisz próg</button>
   </form>
   {% endif %}

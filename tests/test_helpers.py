@@ -53,3 +53,13 @@ def test_shift_month(start, delta, expected):
 ])
 def test_format_zl(grosze, expected):
     assert format_zl(grosze) == expected
+
+
+@pytest.mark.parametrize("grosze, expected", [(-150, "-1,50 zł"), (-50, "-0,50 zł"), (-123456, "-1 234,56 zł")])
+def test_format_zl_negative(grosze, expected):
+    assert format_zl(grosze) == expected  # saldo długu
+
+
+@pytest.mark.parametrize("text", ["0001-01", "9999-12", "1999-12", "2101-01"])
+def test_parse_month_out_of_range_falls_back(text):
+    assert parse_month(text) == date.today().replace(day=1)

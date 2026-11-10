@@ -13,7 +13,7 @@
         <td>{{ s.name }}</td><td>{{ s.day_of_month }}.</td><td class="num">{{ s.amount | zl }}</td>
         <td><div class="row-actions">
           <form method="post" action="{{ url_for('delete_subscription', sub_id=s.id) }}"
-                onsubmit="return confirm('Usunąć tę subskrypcję?')">
+                data-confirm="Usunąć tę subskrypcję?">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button class="link" title="Usuń" aria-label="Usuń subskrypcję {{ s.name }}">✕</button>
           </form>

@@ -4,14 +4,20 @@ import sqlite3
 from flask import Blueprint, flash, g, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 
+import db
+import throttle
+
 bp = Blueprint("auth", __name__)
 
 MIN_PASSWORD = 8
+MAX_PASSWORD = 128  # dłuższe hasło tylko wydłuża kosztowne liczenie skrótu
+LOGIN_TRIES, LOGIN_WINDOW = 10, 900  # nieudane próby na adres e-mail w 15 minut
 
 
 def safe_next(url):
     """Przekierowanie po logowaniu tylko w obrębie aplikacji (bez open redirect)."""
-    if url and url.startswith("/") and not url.startswith(("//", "/\\")):
+    # isprintable: tabulator w "/<TAB>/evil.com" zamieniał się w nagłówku w "//evil.com", a nowa linia dawała błąd 500
+    if url and url.startswith("/") and not url.startswith(("//", "/\\")) and url.isprintable():
         return url
     return url_for("index")
 
@@ -30,8 +36,8 @@ def register():
     password = request.form.get("password") or ""
     if not name or "@" not in email:
         flash("Podaj nazwę i poprawny adres e-mail.", "error")
-    elif len(password) < MIN_PASSWORD:
-        flash(f"Hasło musi mieć co najmniej {MIN_PASSWORD} znaków.", "error")
+    elif not MIN_PASSWORD <= len(password) <= MAX_PASSWORD:
+        flash(f"Hasło musi mieć od {MIN_PASSWORD} do {MAX_PASSWORD} znaków.", "error")
     else:
         try:
             uid = g.conn.execute(
@@ -55,13 +61,19 @@ def register():
 def login():
     if request.method == "GET":
         return render_template("login.html", next=request.args.get("next", ""))
-    email = (request.form.get("email") or "").strip().lower()
+    email = (request.form.get("email") or "").strip().lower()[:254]
+    next_url = request.form.get("next", "")
+    if throttle.count(email, LOGIN_WINDOW) >= LOGIN_TRIES:
+        flash("Zbyt wiele nieudanych prób logowania. Spróbuj za kilkanaście minut.", "error")
+        return render_template("login.html", next=next_url, email=email), 429
     user = g.conn.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
-    if user and check_password_hash(user["password_hash"], request.form.get("password") or ""):
+    # skrót liczymy także dla nieznanego e-maila, by czas odpowiedzi nie zdradzał, czy konto istnieje
+    if check_password_hash(user["password_hash"] if user else db.demo_hash(), request.form.get("password") or "") and user:
         log_in(user["id"])
-        return redirect(safe_next(request.form.get("next")))
+        return redirect(safe_next(next_url))
+    throttle.add(email)
     flash("Nieprawidłowy e-mail lub hasło.", "error")  # celowo bez wskazania, które pole jest złe
-    return render_template("login.html", next=request.form.get("next", ""), email=email), 401
+    return render_template("login.html", next=next_url, email=email), 401
 
 
 @bp.post("/wyloguj")

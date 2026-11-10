@@ -11,7 +11,7 @@
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <label for="amount">Kwota (zł)</label>
     <input id="amount" name="amount" inputmode="decimal" required
-           value="{{ '%.2f' | format(e.amount / 100) | replace('.', ',') }}">
+           value="{{ e.amount | amount }}">
     <label for="category_id">Kategoria</label>
     <select id="category_id" name="category_id" required>
       {% for c in categories %}

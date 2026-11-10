@@ -65,10 +65,11 @@ def test_login_redirects_back_to_next(anon):
     assert resp.location.endswith("/portfel/4")
 
 
-@pytest.mark.parametrize("evil", ["https://evil.example", "//evil.example", "/\\evil.example"])
+@pytest.mark.parametrize("evil", ["https://evil.example", "//evil.example", "/\\evil.example",
+                                  "/\t/evil.example", "/\r\n/evil.example"])  # tabulator dawał "//evil.example"
 def test_login_ignores_external_next(anon, evil):
     resp = anon.post("/logowanie", data={"email": "filip@demo.pl", "password": db.DEMO_PASSWORD, "next": evil})
-    assert "evil" not in resp.location
+    assert resp.status_code == 302 and "evil" not in resp.location
 
 
 def test_user_switcher_removed(client):

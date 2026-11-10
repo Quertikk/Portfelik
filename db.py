@@ -125,14 +125,14 @@ def init_db(demo=False):
 
 
 @cache
-def _demo_hash():
+def demo_hash():
     return generate_password_hash(DEMO_PASSWORD)  # jeden skrót na proces: scrypt jest celowo wolny
 
 
 def _seed(conn):
     for name in USERS:
         conn.execute("INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)",
-                     (name, f"{name.lower()}@demo.pl", _demo_hash()))
+                     (name, f"{name.lower()}@demo.pl", demo_hash()))
 
     users = {r["name"]: r["id"] for r in conn.execute("SELECT id, name FROM users ORDER BY id")}
     for name, uid in users.items():

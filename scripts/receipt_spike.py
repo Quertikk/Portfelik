@@ -17,17 +17,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import receipts  # noqa: E402
-from receipts import CATEGORIES, SCHEMA  # noqa: E402,F401  (SCHEMA i CATEGORIES sprawdza test)
+from receipts import CATEGORIES, SCHEMA, receipt_amount  # noqa: E402,F401  (SCHEMA i CATEGORIES sprawdza test)
 
 MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite")
-
-
-def grosze(text):
-    """'12,50' / '12.5 zł' -> 1250; None przy błędnej kwocie."""
-    try:
-        return round(float(str(text).lower().replace("zł", "").replace("pln", "").replace(" ", "").replace(",", ".")) * 100)
-    except ValueError:
-        return None
 
 
 def describe(cause):
@@ -39,7 +31,7 @@ def describe(cause):
 
 def check(result, truth):
     """Porównanie z arkuszem: kwota co do grosza, data co do dnia, sklep bez rozróżniania wielkości liter."""
-    return {"amount": grosze(result.get("amount")) == grosze(truth["kwota"]),
+    return {"amount": receipt_amount(result.get("amount", "")) == receipt_amount(truth["kwota"]),
             "date": result.get("date") == truth["data"],
             "shop": truth["sklep"].strip().lower() in result.get("shop", "").lower()}
 

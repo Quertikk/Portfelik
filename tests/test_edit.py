@@ -97,3 +97,10 @@ def test_rejected_expense_stays_rejected(client, daria):
     e = query("SELECT * FROM expenses WHERE id = ?", e["id"])[0]
     _, row = edit(client, e, amount="50")
     assert row["status"] == "rejected"
+
+
+@pytest.mark.parametrize("raw", ["20261110", "2026-W46-2"])
+def test_date_is_stored_normalized(client, raw):
+    # fromisoformat przyjmuje te zapisy, ale miesiąc liczymy po pierwszych 7 znakach tekstu
+    client.post("/portfel/3/dodaj", data={"amount": "5", "category_id": 1, "spent_on": raw})
+    assert query("SELECT spent_on FROM expenses ORDER BY id DESC LIMIT 1")[0][0] == "2026-11-10"

@@ -14,7 +14,7 @@ KEEP = 14
 
 
 def backup(db_path, target_dir, keep=KEEP):
-    target_dir.mkdir(parents=True, exist_ok=True)
+    target_dir.mkdir(parents=True, exist_ok=True, mode=0o700)  # kopie zawierają skróty haseł
     target = target_dir / f"portfelik-{datetime.now():%Y%m%d-%H%M%S}.db"
     src, dst = sqlite3.connect(db_path), sqlite3.connect(target)
     try:

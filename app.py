@@ -2,7 +2,6 @@
 import csv
 import io
 import os
-import re
 import secrets
 from datetime import date
 from pathlib import Path
@@ -13,9 +12,10 @@ from flask_wtf.csrf import CSRFProtect
 
 import db
 import receipts
+import throttle
 from auth import bp as auth_bp
-from budget import (PENALTIES, achievements, average, due_soon, limit_state, month_done, saver_mode,
-                    settle)
+from budget import (PENALTIES, achievements, average, due_soon, limit_state, month_done, parse_amount,
+                    saver_mode, settle)
 
 
 def load_secret_key():
@@ -25,6 +25,7 @@ def load_secret_key():
         return key
     path = Path(__file__).with_name("secret_key.txt")
     if not path.exists():
+        path.touch(mode=0o600)  # na wspólnym serwerze klucza nie czytają inni użytkownicy
         path.write_text(secrets.token_hex(32))
     return path.read_text().strip()
 
@@ -32,9 +33,26 @@ def load_secret_key():
 app = Flask(__name__)
 app.secret_key = load_secret_key()
 app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax",
+                  SESSION_COOKIE_SECURE=True,  # serwer działa pod HTTPS; tryb deweloperski (http) wyłącza to na dole
+                  WTF_CSRF_TIME_LIMIT=None,  # token ważny tyle co sesja; domyślna godzina dawałaby błąd 400 przy długo otwartej stronie
                   MAX_CONTENT_LENGTH=receipts.MAX_BYTES)  # F11: dotyczy też zdjęcia paragonu
 CSRFProtect(app)
 app.register_blueprint(auth_bp)
+
+# skrypty tylko z własnej domeny (bez inline JS); style inline są w paskach postępu
+SECURITY_HEADERS = {
+    "Content-Security-Policy": "default-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none';"
+                               " form-action 'self'; base-uri 'none'; object-src 'none'",
+    "X-Content-Type-Options": "nosniff", "X-Frame-Options": "DENY", "Referrer-Policy": "same-origin"}
+RECEIPT_LIMITS = (("user", 20), ("all", 200))  # odczyty paragonu na godzinę: na użytkownika i łącznie (koszt klucza API)
+
+
+@app.after_request
+def security_headers(resp):
+    resp.headers.update(SECURITY_HEADERS)
+    if request.endpoint != "static":
+        resp.headers.setdefault("Cache-Control", "no-store")  # dane finansowe nie zostają w pamięci podręcznej
+    return resp
 
 MONTHS = ["styczeń", "luty", "marzec", "kwiecień", "maj", "czerwiec", "lipiec",
           "sierpień", "wrzesień", "październik", "listopad", "grudzień"]
@@ -45,25 +63,18 @@ CSV_FORMULA = ("=", "+", "-", "@", "\t", "\r")  # Excel traktuje takie komórki 
 
 @app.template_filter("zl")
 def format_zl(grosze):
-    zl, gr = divmod(int(grosze), 100)
-    return f"{zl:,}".replace(",", " ") + f",{gr:02d} zł"
-
-
-def parse_amount(text):
-    """'12,50' / '12.5' / '12' -> 1250 groszy; None przy błędnej kwocie."""
-    try:
-        value = round(float(text.replace(" ", "").replace(",", ".")) * 100)
-    except (AttributeError, ValueError, OverflowError):  # OverflowError: "inf", "1e999"
-        return None
-    return value if 0 < value <= 100_000_000 else None
+    zl, gr = divmod(abs(int(grosze)), 100)
+    return ("-" if grosze < 0 else "") + f"{zl:,}".replace(",", " ") + f",{gr:02d} zł"
 
 
 def parse_month(text):
     try:
         y, m = map(int, (text or "").split("-"))
-        return date(y, m, 1)
+        if 2000 <= y <= 2100:  # poza zakresem shift_month wychodziłby poza daty 1-9999 (błąd 500)
+            return date(y, m, 1)
     except ValueError:
-        return date.today().replace(day=1)
+        pass
+    return date.today().replace(day=1)
 
 
 def shift_month(d, delta):
@@ -107,6 +118,18 @@ def get_wallet(wallet_id):
     if wallet is None:
         abort(404)
     return wallet
+
+
+def owned_wallet(wallet_id):
+    """Portfel, którego właścicielem jest zalogowany użytkownik; inny członek dostaje 403."""
+    w = get_wallet(wallet_id)
+    if w["owner_id"] != g.user["id"]:
+        abort(403)
+    return w
+
+
+def categories():
+    return g.conn.execute("SELECT * FROM categories ORDER BY id").fetchall()
 
 
 # F8: do sum wchodzą tylko zatwierdzone wydatki; każda suma używa tego warunku (alias e = expenses)
@@ -181,10 +204,11 @@ def invite(wallet_id):
     w = get_wallet(wallet_id)
     if w["kind"] != "shared":
         abort(404)
+    g.conn.execute("DELETE FROM invitations WHERE wallet_id = ?", (w["id"],))  # stary link przestaje działać
     g.conn.execute(
         "INSERT INTO invitations (wallet_id, code, expires_at) VALUES (?, ?, datetime('now', ?))",
         (w["id"], secrets.token_urlsafe(16), f"+{INVITE_DAYS} days"))
-    flash(f"Nowy link zaproszenia jest ważny {INVITE_DAYS} dni.", "ok")
+    flash(f"Nowy link zaproszenia jest ważny {INVITE_DAYS} dni. Poprzedni przestał działać.", "ok")
     return redirect(url_for("wallet", wallet_id=w["id"]))
 
 
@@ -267,13 +291,14 @@ def wallet(wallet_id):
         balance=balance, transfers=transfers, prefill=request.args,
         piggy=piggy, moved=moved and moved["amount"], roundup=roundup, leftover=leftover,
         badges=badges, penalties=[(c, PENALTIES[i % len(PENALTIES)]) for i, c in enumerate(overs)],
-        categories=g.conn.execute("SELECT * FROM categories ORDER BY id").fetchall(),
+        categories=categories(),
         month=month, month_name=f"{MONTHS[month.month - 1]} {month.year}",
         prev_m=shift_month(month, -1).strftime("%Y-%m"),
         next_m=shift_month(month, 1).strftime("%Y-%m"),
         today=date.today().isoformat())
 
 
+@app.template_filter("amount")
 def format_amount(grosze):
     """1250 -> '12,50' (pole formularza, CSV)."""
     return f"{grosze / 100:.2f}".replace(".", ",")
@@ -281,7 +306,7 @@ def format_amount(grosze):
 
 def receipt_prefill(raw):
     """F11: surowa odpowiedź modelu -> (pola formularza, czy kwota poprawna). Niepoprawne pola są pomijane."""
-    amount = parse_amount(re.sub(r"(?i)\s*(zł|pln)\s*$", "", raw["amount"].strip()))
+    amount = receipts.receipt_amount(raw["amount"])
     fields = {"description": raw["shop"].strip()[:200]}
     if amount:
         fields["amount"] = format_amount(amount)
@@ -310,6 +335,12 @@ def receipt(wallet_id):
     if mime is None:
         flash("Wybierz zdjęcie paragonu w formacie JPG lub PNG.", "error")
         return redirect(url_for("wallet", wallet_id=w["id"]))
+    keys = {"user": f"receipt:{g.user['id']}", "all": "receipt"}
+    if any(throttle.count(keys[k], 3600) >= limit for k, limit in RECEIPT_LIMITS):
+        flash("Za dużo odczytów paragonów w ostatniej godzinie. Wpisz wydatek ręcznie albo spróbuj później.", "error")
+        return redirect(url_for("wallet", wallet_id=w["id"]))
+    for key in keys.values():
+        throttle.add(key)
     try:
         fields, amount_ok = receipt_prefill(receipts.read_receipt(image, mime))
     except receipts.ReceiptError as e:
@@ -387,13 +418,12 @@ def expense_form():
             "spent_on": f.get("spent_on") or date.today().isoformat(),
             "description": (f.get("description") or "").strip()[:200],
             "comment": (f.get("comment") or "").strip()[:200]}
-    try:
-        date.fromisoformat(data["spent_on"])
-        valid_date = True
+    try:  # isoformat(): fromisoformat przyjmuje też "20261110" i "2026-W45-2", a miesiące liczymy po substr(spent_on, 1, 7)
+        data["spent_on"] = date.fromisoformat(data["spent_on"]).isoformat()
     except ValueError:
-        valid_date = False
+        data["spent_on"] = None
     valid_cat = g.conn.execute("SELECT 1 FROM categories WHERE id = ?", (data["category_id"],)).fetchone()
-    if data["amount"] is None or not valid_cat or not valid_date:
+    if data["amount"] is None or not valid_cat or data["spent_on"] is None:
         flash("Podaj poprawną kwotę, kategorię i datę.", "error")
         return None
     return data
@@ -415,7 +445,7 @@ def add_expense(wallet_id):
             dict(data, wallet_id=w["id"], user_id=g.user["id"], status=status))
         flash("Wydatek czeka na zatwierdzenie przez innego członka portfela." if status == "pending"
               else "Wydatek dodany.", "ok")
-    return redirect(url_for("wallet", wallet_id=w["id"], m=month_of(request.form.get("spent_on"))))
+    return redirect(url_for("wallet", wallet_id=w["id"], m=month_of(data["spent_on"] if data else request.form.get("spent_on"))))
 
 
 @app.route("/wydatek/<int:expense_id>/edytuj", methods=["GET", "POST"])
@@ -427,8 +457,7 @@ def edit_expense(expense_id):
         abort(404)
     w = get_wallet(e["wallet_id"])
     if request.method == "GET":
-        return render_template("edit.html", e=e, wallet=w,
-                               categories=g.conn.execute("SELECT * FROM categories ORDER BY id").fetchall())
+        return render_template("edit.html", e=e, wallet=w, categories=categories())
     data = expense_form()
     if not data:
         return redirect(url_for("edit_expense", expense_id=e["id"]))
@@ -477,9 +506,7 @@ def reject_expense(expense_id):
 
 @app.post("/portfel/<int:wallet_id>/prog")
 def set_threshold(wallet_id):
-    w = get_wallet(wallet_id)
-    if w["owner_id"] != g.user["id"]:
-        abort(403)
+    w = owned_wallet(wallet_id)
     amount = parse_amount(request.form.get("threshold"))
     if amount is None:
         flash("Podaj poprawny próg, np. 200.", "error")
@@ -492,11 +519,9 @@ def set_threshold(wallet_id):
 @app.post("/portfel/<int:wallet_id>/limity")
 def set_limits(wallet_id):
     """Pole limit_<id kategorii>: puste usuwa limit, kwota go ustawia; błędna kwota nie zmienia limitu."""
-    w = get_wallet(wallet_id)
-    if w["owner_id"] != g.user["id"]:
-        abort(403)
+    w = owned_wallet(wallet_id)
     invalid = []
-    for c in g.conn.execute("SELECT id, name FROM categories ORDER BY id"):
+    for c in categories():
         text = (request.form.get(f"limit_{c['id']}") or "").strip()
         amount = parse_amount(text)
         if not text:
@@ -548,6 +573,7 @@ db.init_db()
 
 if __name__ == "__main__":  # tryb deweloperski; serwer importuje app przez WSGI i nie dostaje kont demo
     db.init_db(demo=True)
+    app.config["SESSION_COOKIE_SECURE"] = False  # lokalnie działamy przez http
     port = int(os.environ.get("PORT", 5000))
     print(f"Portfelik: http://127.0.0.1:{port}")  # ASCII: konsola Windows (cp1252)
     app.run(host="127.0.0.1", port=port)

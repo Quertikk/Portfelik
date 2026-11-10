@@ -4,6 +4,7 @@ import json
 
 import pytest
 
+import app as app_module
 import receipts
 from conftest import WALLET, query
 
@@ -243,3 +244,11 @@ def test_gemini_does_not_retry_bad_request(monkeypatch):
     with pytest.raises(receipts.ReceiptError):
         receipts.gemini(PNG, "image/png")
     assert len(calls) == 1
+
+
+def test_receipt_reads_are_limited_per_user(client, monkeypatch):
+    calls = fake_model(monkeypatch, GOOD)
+    limit = dict(app_module.RECEIPT_LIMITS)["user"]
+    for _ in range(limit + 3):
+        html = upload(client).get_data(as_text=True)
+    assert len(calls) == limit and "Za dużo odczytów" in html

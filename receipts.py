@@ -6,11 +6,12 @@ Klucz API tylko ze zmiennej środowiskowej (NF9).
 import base64
 import json
 import os
+import re
 import time
-import urllib.error
 import urllib.request
 
 import db
+from budget import parse_amount
 
 CATEGORIES = [name for name, _ in db.CATEGORIES]
 MAX_BYTES = 5 * 1024 * 1024
@@ -30,6 +31,11 @@ SIGNATURES = {b"\xff\xd8\xff": "image/jpeg", b"\x89PNG\r\n\x1a\n": "image/png"}
 
 class ReceiptError(Exception):
     """Błąd odczytu; komunikat nadaje się do pokazania użytkownikowi."""
+
+
+def receipt_amount(text):
+    """'12,50 zł' / '1 234,00 PLN' -> grosze; None przy błędnej kwocie."""
+    return parse_amount(re.sub(r"(?i)\s*(zł|pln)\s*$", "", text.strip()))
 
 
 def image_mime(data):
@@ -53,7 +59,7 @@ def gemini(image_bytes, mime):
         try:
             with urllib.request.urlopen(req, timeout=45) as resp:
                 return json.load(resp)["candidates"][0]["content"]["parts"][0]["text"]
-        except (urllib.error.URLError, TimeoutError, KeyError, IndexError, ValueError) as e:
+        except (OSError, KeyError, IndexError, ValueError) as e:  # URLError i TimeoutError to OSError
             # przeciążenie (503) i przekroczenie czasu bywają chwilowe; inne błędy kończą od razu
             transient = isinstance(e, TimeoutError) or getattr(e, "code", None) in TRANSIENT
             if not transient or attempt == TRIES - 1:
