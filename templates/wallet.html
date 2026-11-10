@@ -46,19 +46,20 @@
 
   <div class="card">
     <span class="label">Według kategorii</span>
+    {% if by_category | selectattr('avg') | list %}<p class="muted legend"><span class="avg"></span> średnia z 3 poprzednich miesięcy</p>{% endif %}
     {% for c in by_category %}
       <div class="bar-row">
         <span>{{ c.icon }} {{ c.name }}</span>
         <span>{{ c.total | zl }}{% if c.lim %} <span class="muted">/ {{ c.lim | zl }}</span>{% endif %}</span>
       </div>
+      <div class="bar {{ c.state or '' }}"><div style="width: {{ c.fill | round(1) }}%"></div>
+        {% if c.avg_pct is not none %}<span class="avg" style="left: {{ c.avg_pct | round(1) }}%"></span>{% endif %}</div>
       {% if c.lim %}
         {% set pct = (c.total * 100 / c.lim) | round | int %}
-        <div class="bar {{ c.state }}"><div style="width: {{ [pct, 100] | min }}%"></div></div>
         {% if c.state == 'warn' %}<span class="limit-note warn">{{ pct }}% limitu</span>
         {% elif c.state == 'over' %}<span class="limit-note over">Limit przekroczony o {{ (c.total - c.lim) | zl }}</span>{% endif %}
-      {% else %}
-        <div class="bar"><div style="width: {{ ((c.total * 100 / total) if total else 0) | round | int }}%"></div></div>
       {% endif %}
+      {% if c.avg %}<span class="avg-note">średnia z 3 miesięcy: {{ c.avg | zl }}</span>{% endif %}
     {% else %}
       <p class="empty">Brak wydatków w tym miesiącu.</p>
     {% endfor %}
@@ -70,6 +71,21 @@
     {% for p in by_person %}
       <div class="bar-row"><span>{{ p.name }}</span><span>{{ p.total | zl }}</span></div>
     {% endfor %}
+  </div>
+
+  <div class="card">
+    <span class="label">Rozliczenie · {{ month_name }}</span>
+    {% for p in by_person %}
+      <div class="bar-row"><span>{{ p.name }}</span>
+        {% set b = balance[p.name] %}
+        <span class="{{ 'plus' if b > 0 else 'minus' if b < 0 }}">{{ '+' if b > 0 }}{{ b | zl }}</span></div>
+    {% endfor %}
+    {% for from, to, amount in transfers %}
+      <p class="transfer"><strong>{{ from }}</strong> → <strong>{{ to }}</strong>: {{ amount | zl }}</p>
+    {% else %}
+      <p class="muted">Wszyscy są rozliczeni.</p>
+    {% endfor %}
+    <p class="muted">Równy podział zatwierdzonych wydatków. Plus to nadpłata, minus to dług.</p>
   </div>
 
   <div class="card">
@@ -123,20 +139,31 @@
   <span class="label">Dodaj wydatek</span>
   <form method="post" action="{{ url_for('add_expense', wallet_id=wallet.id) }}" class="add">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <input name="amount" inputmode="decimal" placeholder="Kwota, np. 12,50" aria-label="Kwota" required>
+    <input name="amount" inputmode="decimal" placeholder="Kwota, np. 12,50" aria-label="Kwota" required
+           value="{{ prefill.amount }}">
     <select name="category_id" aria-label="Kategoria" required>
-      {% for c in categories %}<option value="{{ c.id }}">{{ c.icon }} {{ c.name }}</option>{% endfor %}
+      {% for c in categories %}<option value="{{ c.id }}" {{ 'selected' if prefill.category_id == c.id | string }}>{{ c.icon }} {{ c.name }}</option>{% endfor %}
     </select>
-    <input name="description" placeholder="Opis (opcjonalnie)" aria-label="Opis" maxlength="200">
-    <input name="spent_on" type="date" aria-label="Data" value="{{ today }}">
+    <input name="description" placeholder="Opis (opcjonalnie)" aria-label="Opis" maxlength="200"
+           value="{{ prefill.description }}">
+    <input name="spent_on" type="date" aria-label="Data" value="{{ prefill.spent_on or today }}">
     <button type="submit">Dodaj</button>
     <input name="comment" class="full" maxlength="200" aria-label="Komentarz"
            placeholder="Komentarz dla współlokatorów (opcjonalnie), np. dlaczego tak drogo">
   </form>
+  <form method="post" action="{{ url_for('receipt', wallet_id=wallet.id) }}" enctype="multipart/form-data" class="receipt">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label for="receipt_file">📷 Dodaj ze zdjęcia paragonu (JPG lub PNG, do 5 MB)</label>
+    <input id="receipt_file" name="receipt" type="file" accept="image/jpeg,image/png" required>
+    <button type="submit" class="secondary">Odczytaj paragon</button>
+    <p class="muted">Zdjęcie zostanie wysłane do zewnętrznego modelu AI (Google Gemini) tylko po to, by odczytać dane.
+      Portfelik go nie zapisuje. Odczytane dane sprawdź, zanim klikniesz „Dodaj”.</p>
+  </form>
 </section>
 
 <section class="card">
-  <span class="label">Lista wydatków</span>
+  <span class="label">Lista wydatków
+    <a class="export" href="{{ url_for('export_csv', wallet_id=wallet.id, m=month.strftime('%Y-%m')) }}">Pobierz CSV</a></span>
   <table>
     <thead><tr><th>Data</th><th>Wydatek</th>{% if shared %}<th>Kto</th>{% endif %}<th class="num">Kwota</th><th><span class="sr-only">Akcje</span></th></tr></thead>
     <tbody>
@@ -196,11 +223,4 @@
 </details>
 {% endif %}
 
-<section class="card soon">
-  <span class="label">W przygotowaniu</span>
-  <ul>
-    <li>📷 Dodawanie wydatku ze zdjęcia paragonu przez AI <em>(sprint 2)</em></li>
-    <li>🔁 Subskrypcje i przypomnienia <em>(sprint 2)</em></li>
-  </ul>
-</section>
 {% endblock %}

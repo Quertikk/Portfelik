@@ -1,15 +1,20 @@
 """Portfelik: aplikacja webowa do budżetu osobistego i wspólnych wydatków."""
+import csv
+import io
 import os
+import re
 import secrets
 from datetime import date
 from pathlib import Path
 
-from flask import Flask, abort, flash, g, redirect, render_template, request, session, url_for
+from flask import (Flask, Response, abort, flash, g, redirect, render_template, request, session,
+                   url_for)
 from flask_wtf.csrf import CSRFProtect
 
 import db
+import receipts
 from auth import bp as auth_bp
-from budget import limit_state, saver_mode
+from budget import average, due_soon, limit_state, saver_mode, settle
 
 
 def load_secret_key():
@@ -25,13 +30,16 @@ def load_secret_key():
 
 app = Flask(__name__)
 app.secret_key = load_secret_key()
-app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax")
+app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax",
+                  MAX_CONTENT_LENGTH=receipts.MAX_BYTES)  # F11: dotyczy też zdjęcia paragonu
 CSRFProtect(app)
 app.register_blueprint(auth_bp)
 
 MONTHS = ["styczeń", "luty", "marzec", "kwiecień", "maj", "czerwiec", "lipiec",
           "sierpień", "wrzesień", "październik", "listopad", "grudzień"]
 INVITE_DAYS = 7
+STATUS_PL = {"approved": "zatwierdzony", "pending": "oczekuje", "rejected": "odrzucony"}
+CSV_FORMULA = ("=", "+", "-", "@", "\t", "\r")  # Excel traktuje takie komórki jak formuły
 
 
 @app.template_filter("zl")
@@ -111,6 +119,23 @@ def month_total(wallet_id, month):
         (wallet_id, month.strftime("%Y-%m"))).fetchone()[0]
 
 
+def prev_averages(wallet_id, month):
+    """F12: średnie miesięczne kategorii z 3 poprzednich miesięcy ({category_id: grosze}); {} bez historii.
+
+    Dzielnik to liczba tych miesięcy, które zaczęły się nie wcześniej niż pierwszy zatwierdzony wydatek portfela.
+    """
+    first = g.conn.execute(f"SELECT MIN(substr(e.spent_on, 1, 7)) FROM expenses e WHERE e.wallet_id = ? AND {APPROVED}",
+                           (wallet_id,)).fetchone()[0]
+    months = sum(shift_month(month, -i).strftime("%Y-%m") >= (first or "9") for i in (1, 2, 3))
+    if not months:
+        return {}
+    rows = g.conn.execute(
+        f"SELECT e.category_id, SUM(e.amount) FROM expenses e WHERE e.wallet_id = ? AND {APPROVED}"
+        " AND substr(e.spent_on, 1, 7) >= ? AND substr(e.spent_on, 1, 7) < ? GROUP BY e.category_id",
+        (wallet_id, shift_month(month, -3).strftime("%Y-%m"), month.strftime("%Y-%m")))
+    return {cid: average(total, months) for cid, total in rows}
+
+
 def needs_approval(wallet, amount):
     return wallet["kind"] == "shared" and amount > wallet["approval_threshold"]
 
@@ -170,15 +195,24 @@ def wallet(wallet_id):
         " JOIN categories c ON c.id = e.category_id JOIN users u ON u.id = e.user_id"
         " WHERE e.wallet_id = ? AND substr(e.spent_on, 1, 7) = ?"
         " ORDER BY e.spent_on DESC, e.id DESC", (w["id"], ym)).fetchall()
-    # kategorie z wydatkami lub z limitem; lim to limit miesięczny albo NULL
+    averages = prev_averages(w["id"], month)
+    # kategorie z wydatkami, limitem lub średnią z poprzednich miesięcy; lim to limit miesięczny albo NULL
+    avg_ids = ",".join("?" * len(averages))
     by_category = [dict(r, state=r["lim"] and limit_state(r["total"], r["lim"])) for r in g.conn.execute(
         "SELECT c.id, c.name, c.icon, COALESCE(s.total, 0) AS total, l.amount AS lim FROM categories c"
         " LEFT JOIN (SELECT e.category_id, SUM(e.amount) AS total FROM expenses e"
         f"   WHERE e.wallet_id = ? AND substr(e.spent_on, 1, 7) = ? AND {APPROVED}"
         "   GROUP BY e.category_id) s ON s.category_id = c.id"
         " LEFT JOIN category_limits l ON l.category_id = c.id AND l.wallet_id = ?"
-        " WHERE s.total IS NOT NULL OR l.amount IS NOT NULL"
-        " ORDER BY total DESC, c.id", (w["id"], ym, w["id"]))]
+        f" WHERE s.total IS NOT NULL OR l.amount IS NOT NULL OR c.id IN ({avg_ids})"
+        " ORDER BY total DESC, c.id", (w["id"], ym, w["id"], *averages))]
+    # F12: pasek bez limitu skaluje się do największej kategorii lub średniej, z limitem do limitu
+    scale = max([c["total"] for c in by_category] + list(averages.values()) + [1])
+    for c in by_category:
+        base = c["lim"] or scale
+        c["avg"] = averages.get(c["id"]) or None
+        c["fill"] = min(c["total"] * 100 / base, 100)
+        c["avg_pct"] = c["avg"] and min(c["avg"] * 100 / base, 100)
     limited = [c for c in by_category if c["lim"]]
     saver = month == date.today().replace(day=1) and saver_mode(
         sum(c["total"] for c in limited), sum(c["lim"] for c in limited), date.today())
@@ -188,6 +222,7 @@ def wallet(wallet_id):
         " LEFT JOIN expenses e ON e.user_id = u.id AND e.wallet_id = m.wallet_id"
         f"   AND substr(e.spent_on, 1, 7) = ? AND {APPROVED}"
         " WHERE m.wallet_id = ? GROUP BY u.id ORDER BY total DESC", (ym, w["id"])).fetchall()
+    balance, transfers = settle({p["name"]: p["total"] for p in by_person}) if w["kind"] == "shared" else ({}, [])
     pending = g.conn.execute(
         "SELECT e.*, c.name AS category, c.icon, u.name AS who FROM expenses e"
         " JOIN categories c ON c.id = e.category_id JOIN users u ON u.id = e.user_id"
@@ -202,11 +237,117 @@ def wallet(wallet_id):
         expenses=expenses, pending=pending, total=total, saver=saver,
         limits={c["id"]: c["lim"] for c in limited},
         prev_total=prev_total, by_category=by_category, by_person=by_person,
+        balance=balance, transfers=transfers, prefill=request.args,
         categories=g.conn.execute("SELECT * FROM categories ORDER BY id").fetchall(),
         month=month, month_name=f"{MONTHS[month.month - 1]} {month.year}",
         prev_m=shift_month(month, -1).strftime("%Y-%m"),
         next_m=shift_month(month, 1).strftime("%Y-%m"),
         today=date.today().isoformat())
+
+
+def format_amount(grosze):
+    """1250 -> '12,50' (pole formularza, CSV)."""
+    return f"{grosze / 100:.2f}".replace(".", ",")
+
+
+def receipt_prefill(raw):
+    """F11: surowa odpowiedź modelu -> (pola formularza, czy kwota poprawna). Niepoprawne pola są pomijane."""
+    amount = parse_amount(re.sub(r"(?i)\s*(zł|pln)\s*$", "", raw["amount"].strip()))
+    fields = {"description": raw["shop"].strip()[:200]}
+    if amount:
+        fields["amount"] = format_amount(amount)
+    try:
+        fields["spent_on"] = date.fromisoformat(raw["date"].strip()).isoformat()
+    except ValueError:
+        pass
+    cat = g.conn.execute("SELECT id FROM categories WHERE name = ?", (raw["category"].strip(),)).fetchone()
+    if cat:
+        fields["category_id"] = cat["id"]
+    return fields, amount is not None
+
+
+@app.errorhandler(413)
+def too_large(e):
+    flash("Plik jest za duży. Zdjęcie paragonu może mieć najwyżej 5 MB.", "error")
+    return redirect(request.referrer or url_for("index"))
+
+
+@app.post("/portfel/<int:wallet_id>/paragon")
+def receipt(wallet_id):
+    """F11: zdjęcie paragonu -> formularz dodawania wypełniony do poprawy; nic nie jest zapisywane (NF6)."""
+    w = get_wallet(wallet_id)
+    image = request.files["receipt"].read() if "receipt" in request.files else b""
+    mime = receipts.image_mime(image)
+    if mime is None:
+        flash("Wybierz zdjęcie paragonu w formacie JPG lub PNG.", "error")
+        return redirect(url_for("wallet", wallet_id=w["id"]))
+    try:
+        fields, amount_ok = receipt_prefill(receipts.read_receipt(image, mime))
+    except receipts.ReceiptError as e:
+        flash(str(e), "error")
+        return redirect(url_for("wallet", wallet_id=w["id"]))
+    if amount_ok:
+        flash("Odczytano paragon. Sprawdź dane i kliknij „Dodaj”.", "ok")
+    else:
+        flash("Nie udało się odczytać kwoty. Uzupełnij ją ręcznie.", "error")
+    return redirect(url_for("wallet", wallet_id=w["id"], **fields))
+
+
+@app.get("/portfel/<int:wallet_id>/eksport.csv")
+def export_csv(wallet_id):
+    """F18: wydatki miesiąca do CSV (średnik i przecinek dziesiętny, bo tak otwiera się w polskim Excelu)."""
+    w = get_wallet(wallet_id)
+    ym = parse_month(request.args.get("m")).strftime("%Y-%m")
+    rows = g.conn.execute(
+        "SELECT e.spent_on, c.name AS category, e.amount, e.description, u.name AS who, e.status FROM expenses e"
+        " JOIN categories c ON c.id = e.category_id JOIN users u ON u.id = e.user_id"
+        " WHERE e.wallet_id = ? AND substr(e.spent_on, 1, 7) = ? ORDER BY e.spent_on, e.id", (w["id"], ym))
+    out = io.StringIO()
+    writer = csv.writer(out, delimiter=";")
+    writer.writerow(["data", "kategoria", "kwota", "opis", "osoba", "status"])
+    for r in rows:
+        cells = [r["spent_on"], r["category"], format_amount(r["amount"]), r["description"], r["who"],
+                 STATUS_PL[r["status"]]]
+        writer.writerow([("'" + c) if c.startswith(CSV_FORMULA) else c for c in cells])
+    return Response(out.getvalue().encode("utf-8-sig"), mimetype="text/csv",
+                    headers={"Content-Disposition": f'attachment; filename="portfelik-{w["id"]}-{ym}.csv"'})
+
+
+@app.context_processor
+def due_banner():
+    """F13: subskrypcje płatne w ciągu 2 dni, do banera w base.html."""
+    if not g.get("user"):
+        return {}
+    today = date.today()
+    subs = g.conn.execute("SELECT * FROM subscriptions WHERE user_id = ?", (g.user["id"],)).fetchall()
+    return {"due_subs": [(s, ("dziś", "jutro", "pojutrze")[(due - today).days])
+                         for s, due in due_soon(subs, today)]}
+
+
+@app.route("/subskrypcje", methods=["GET", "POST"])
+def subscriptions():
+    if request.method == "POST":
+        name = (request.form.get("name") or "").strip()[:60]
+        amount = parse_amount(request.form.get("amount"))
+        day = request.form.get("day", type=int)
+        if not name or amount is None or not day or not 1 <= day <= 31:
+            flash("Podaj nazwę, poprawną kwotę i dzień płatności (1–31).", "error")
+        else:
+            g.conn.execute("INSERT INTO subscriptions (user_id, name, amount, day_of_month) VALUES (?, ?, ?, ?)",
+                           (g.user["id"], name, amount, day))
+            flash("Subskrypcja dodana.", "ok")
+        return redirect(url_for("subscriptions"))
+    subs = g.conn.execute("SELECT * FROM subscriptions WHERE user_id = ? ORDER BY day_of_month, id",
+                          (g.user["id"],)).fetchall()
+    return render_template("subscriptions.html", subs=subs, monthly=sum(s["amount"] for s in subs))
+
+
+@app.post("/subskrypcje/<int:sub_id>/usun")
+def delete_subscription(sub_id):
+    deleted = g.conn.execute("DELETE FROM subscriptions WHERE id = ? AND user_id = ?",
+                             (sub_id, g.user["id"])).rowcount
+    flash("Subskrypcja usunięta." if deleted else "Nie ma takiej subskrypcji.", "ok" if deleted else "error")
+    return redirect(url_for("subscriptions"))
 
 
 def expense_form():

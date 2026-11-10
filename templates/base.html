@@ -8,10 +8,11 @@
 </head>
 <body>
   <header class="topbar">
-    <a class="logo" href="{{ url_for('index') }}">👛 Portfelik <span class="badge">wersja 0.1 · prototyp</span></a>
+    <a class="logo" href="{{ url_for('index') }}">👛 Portfelik <span class="badge">wersja 1.0</span></a>
     {% if g.user %}
     <form method="post" action="{{ url_for('auth.logout') }}" class="who">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <a href="{{ url_for('subscriptions') }}">Subskrypcje</a>
       <span>{{ g.user.name }}</span>
       <button class="secondary">Wyloguj</button>
     </form>
@@ -21,6 +22,9 @@
   <main>
     {% for kind, msg in get_flashed_messages(with_categories=true) %}
       <div class="flash {{ kind }}">{{ msg }}</div>
+    {% endfor %}
+    {% for sub, when in due_subs %}
+      <div class="flash saver" role="status">🔁 <strong>{{ sub.name }}</strong>: płatność {{ when }} ({{ sub.amount | zl }}).</div>
     {% endfor %}
     {% block content %}{% endblock %}
   </main>

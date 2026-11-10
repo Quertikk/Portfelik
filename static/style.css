@@ -10,6 +10,7 @@ main { max-width: 960px; margin: 0 auto; padding: 16px; }
           background: var(--card); border-bottom: 1px solid var(--border); }
 .logo { font-weight: 700; font-size: 1.2rem; color: var(--text); text-decoration: none; }
 .who { display: flex; gap: 8px; align-items: center; color: var(--muted); }
+.who a { color: var(--accent); }
 
 .tabs { display: flex; gap: 8px; margin-bottom: 12px; }
 .tabs a { flex: 1; text-align: center; padding: 10px; border-radius: 10px; background: var(--card);
@@ -30,7 +31,7 @@ main { max-width: 960px; margin: 0 auto; padding: 16px; }
 .hint.down { color: var(--accent); }
 
 .bar-row { display: flex; justify-content: space-between; font-size: .95rem; margin-top: 8px; }
-.bar { height: 6px; background: var(--accent-soft); border-radius: 3px; margin-top: 4px; }
+.bar { position: relative; height: 6px; background: var(--accent-soft); border-radius: 3px; margin-top: 4px; }
 .bar div { height: 100%; background: var(--accent); border-radius: 3px; }
 
 .add { display: grid; grid-template-columns: 1fr 1.3fr 1.6fr 1fr auto; gap: 8px; }
@@ -100,7 +101,23 @@ th { color: var(--muted); font-weight: 500; font-size: .85rem; }
 .flash.ok { background: var(--accent-soft); }
 .flash.error { background: #fde8e7; color: var(--danger); }
 
+/* F12: znacznik średniej z 3 miesięcy na pasku kategorii */
+.avg { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; background: var(--text); }
+.legend .avg { position: static; display: inline-block; height: 12px; vertical-align: middle; margin: 0 4px 0 0; }
+.avg-note { display: block; font-size: .8rem; color: var(--muted); margin-top: 2px; }
+.transfer { margin: 8px 0 0; }
+.plus { color: var(--accent); }
+.minus { color: var(--danger); }
+.export { float: right; text-transform: none; letter-spacing: 0; color: var(--accent); }
+.receipt { display: grid; gap: 8px; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border); }
+.receipt input[type=file] { width: 100%; }
+.sub-form { display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 8px; }
+.sub-form > * { min-width: 0; width: 100%; }
+tfoot th { color: var(--text); font-weight: 600; }
+
 @media (max-width: 700px) {
+  .sub-form { grid-template-columns: 1fr 1fr; }
+  .sub-form input:first-of-type, .sub-form button { grid-column: span 2; }
   .add { grid-template-columns: 1fr 1fr; }
   .add button { grid-column: span 2; }
   th, td { padding: 8px 3px; }

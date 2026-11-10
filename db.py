@@ -71,6 +71,15 @@ CREATE TABLE category_limits (
 """, """
 -- F9: komentarz do wydatku (do 200 znaków, widoczny na liście i przy zatwierdzaniu)
 ALTER TABLE expenses ADD COLUMN comment TEXT NOT NULL DEFAULT '';
+""", """
+-- F13: subskrypcje użytkownika (miesięczne); dzień 29-31 w krótszym miesiącu liczy się jako ostatni dzień
+CREATE TABLE subscriptions (
+    id           INTEGER PRIMARY KEY,
+    user_id      INTEGER NOT NULL REFERENCES users(id),
+    name         TEXT NOT NULL,
+    amount       INTEGER NOT NULL CHECK (amount > 0),
+    day_of_month INTEGER NOT NULL CHECK (day_of_month BETWEEN 1 AND 31)
+);
 """]
 
 USERS = ["Valentyn", "Daria", "Filip"]
