@@ -6,6 +6,7 @@ Klucz API tylko ze zmiennej środowiskowej (NF9).
 import base64
 import json
 import os
+import time
 import urllib.error
 import urllib.request
 
@@ -13,7 +14,9 @@ import db
 
 CATEGORIES = [name for name, _ in db.CATEGORIES]
 MAX_BYTES = 5 * 1024 * 1024
-PROMPT = ("Odczytaj paragon ze zdjęcia. amount: kwota końcowa do zapłaty (SUMA PLN) jako tekst, np. \"12,50\". "
+TRANSIENT = (500, 502, 503, 504)  # HTTP: przeciążenie dostawcy; 429 (limit dzienny) nie ma sensu ponawiać
+TRIES = 3
+PROMPT = ("Odczytaj paragon ze zdjęcia. amount: kwota faktycznie zapłacona jako tekst, np. \"12,50\": pozycja \"DO ZAPŁATY\", a gdy jej nie ma, \"SUMA PLN\". "
           "date: data zakupu w formacie RRRR-MM-DD. shop: nazwa sklepu. "
           f"category: dokładnie jedna z: {', '.join(CATEGORIES)}. "
           "Gdy pola nie da się odczytać, zwróć pusty tekst.")
@@ -38,7 +41,7 @@ def gemini(image_bytes, mime):
     key = os.environ.get("GEMINI_API_KEY")
     if not key:
         raise ReceiptError("Odczyt paragonów nie jest skonfigurowany. Wpisz wydatek ręcznie.")
-    model = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+    model = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite")
     body = {"contents": [{"parts": [
                 {"inlineData": {"mimeType": mime, "data": base64.b64encode(image_bytes).decode()}},
                 {"text": PROMPT}]}],
@@ -46,11 +49,16 @@ def gemini(image_bytes, mime):
     req = urllib.request.Request(
         f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
         json.dumps(body).encode(), {"Content-Type": "application/json", "x-goog-api-key": key})
-    try:
-        with urllib.request.urlopen(req, timeout=60) as resp:
-            return json.load(resp)["candidates"][0]["content"]["parts"][0]["text"]
-    except (urllib.error.URLError, TimeoutError, KeyError, IndexError, ValueError) as e:
-        raise ReceiptError("Nie udało się odczytać paragonu. Wpisz wydatek ręcznie.") from e
+    for attempt in range(TRIES):
+        try:
+            with urllib.request.urlopen(req, timeout=45) as resp:
+                return json.load(resp)["candidates"][0]["content"]["parts"][0]["text"]
+        except (urllib.error.URLError, TimeoutError, KeyError, IndexError, ValueError) as e:
+            # przeciążenie (503) i przekroczenie czasu bywają chwilowe; inne błędy kończą od razu
+            transient = isinstance(e, TimeoutError) or getattr(e, "code", None) in TRANSIENT
+            if not transient or attempt == TRIES - 1:
+                raise ReceiptError("Nie udało się odczytać paragonu. Wpisz wydatek ręcznie.") from e
+            time.sleep(2 * (attempt + 1))
 
 
 PROVIDERS = {"gemini": gemini}

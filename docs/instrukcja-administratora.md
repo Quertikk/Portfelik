@@ -24,7 +24,7 @@ Klucz sesji powstaje w pliku `secret_key.txt` (jest w `.gitignore`). Usunięcie 
 |---|---|---|
 | `SECRET_KEY` | Klucz podpisujący sesje. Na serwerze obowiązkowa: bez niej każdy restart losowałby inny klucz z pliku i zrywał sesje | lokalnie plik `secret_key.txt` |
 | `GEMINI_API_KEY` | Klucz API do odczytu paragonów. Bez niego reszta aplikacji działa, a formularz paragonu pokazuje komunikat o braku konfiguracji | brak |
-| `GEMINI_MODEL` | Model Gemini | `gemini-2.5-flash` |
+| `GEMINI_MODEL` | Model Gemini | `gemini-3.5-flash-lite` |
 | `RECEIPT_PROVIDER` | Dostawca odczytu paragonów (klucz w `receipts.PROVIDERS`) | `gemini` |
 | `PORT` | Port trybu deweloperskiego (`python app.py`) | `5000` |
 
@@ -147,6 +147,7 @@ Test dymny po wdrożeniu: zaloguj się, dodaj wydatek, kliknij „Reload” w za
 | Po każdym restarcie wylogowanie | Brak `SECRET_KEY` w pliku WSGI. Ustaw stały klucz (punkt 4.2) |
 | „Odczyt paragonów nie jest skonfigurowany” | Brak `GEMINI_API_KEY`. Ustaw zmienną i kliknij „Reload” |
 | „Nie udało się odczytać paragonu” mimo klucza | Domena API zablokowana (punkt 4.4), błędny klucz albo limit zapytań |
+| HTTP 404 „model is no longer available” (widać w `scripts/receipt_spike.py`) | Google wycofał model. Ustaw nowy w zmiennej `GEMINI_MODEL` (nazwa z komunikatu błędu lub z AI Studio) i kliknij „Reload”. Domyślny model to `gemini-3.5-flash-lite` |
 | Aplikacja nie startuje po aktualizacji | Zakładka Web, link „Error log”; zwykle brakuje pakietu: `pip install -r requirements.txt` |
 | `OperationalError: database is locked` | Dwa procesy zapisują naraz. SQLite wystarcza dla małej grupy użytkowników; przy dużym ruchu przejdź na PostgreSQL |
 | Stara baza bez haseł (sprzed F6) | Usuń `portfelik.db`, bo konta z wersji 0.1 nie mają haseł |

@@ -59,13 +59,14 @@ Migracje: 1 schemat początkowy, 2 logowanie (e-mail, hasło), 3 zaproszenia, 4 
 |---|---|---|
 | `SECRET_KEY` | Klucz sesji | lokalnie plik `secret_key.txt` |
 | `GEMINI_API_KEY` | Klucz API modelu do odczytu paragonów (NF9); bez niego upload daje komunikat o braku konfiguracji | brak |
-| `GEMINI_MODEL` | Model Gemini | `gemini-2.5-flash` |
+| `GEMINI_MODEL` | Model Gemini | `gemini-3.5-flash-lite` |
 | `RECEIPT_PROVIDER` | Klucz w `receipts.PROVIDERS` | `gemini` |
 | `PORT` | Port trybu deweloperskiego | `5000` |
 
 ## Decyzje
 
 - **Zdjęcie paragonu (NF6):** `request.files[...].read()` do pamięci, bez `save`. Limit 5 MB to `MAX_CONTENT_LENGTH`; błąd 413 zamienia się w komunikat. Typ pliku wynika z pierwszych bajtów, nie z nazwy.
+- **Model do paragonów (F11):** domyślny `gemini-3.5-flash-lite`. Wybrany 10.11.2026 z dokumentacji Google (strony modeli i cen) i zestawień limitów. Warunki: model stabilny (nie preview), darmowy plan, wejście obrazowe, nie wycofany. Limity darmowego planu, które sprawdzono: `gemini-3.8-flash` i `gemini-3.6-flash` mają 20 zapytań dziennie i 5 na minutę, a `gemini-3.5-flash-lite` i `gemini-3.1-flash-lite` 500 dziennie i 15 na minutę. Google nie publikuje tych liczb w dokumentacji (są w AI Studio, zakładka Rate limits, dla danego projektu), więc wartości z zestawień mogą się różnić. Poprzedni wybór `gemini-2.5-flash` jest wycofany dla nowych kluczy (HTTP 404, przekierowanie na `gemini-3.5-flash-lite` od 1.12.2026), a `gemini-3.8-flash` wyczerpał limit 20 zapytań podczas testu. Jakość odczytu potwierdza test akceptacyjny (8 z 10 kwot). Jeśli lite go nie zda, następny kandydat to `gemini-3.1-flash-lite`, a dopiero potem `gemini-3.6-flash` z limitem 20 dziennie.
 - **Paragon nie zapisuje wydatku:** odpowiedź modelu trafia do parametrów adresu strony portfela, a formularz zapisuje zwykła trasa `/dodaj`, więc próg zatwierdzania i walidacja działają tak samo jak przy ręcznym wpisie.
 - **Walidacja odpowiedzi modelu:** kwota przez `parse_amount`, data przez `date.fromisoformat`, kategoria musi istnieć w tabeli `categories`. Błędne pole jest pomijane, błędna kwota daje komunikat.
 - **Średnia z 3 miesięcy (F12):** suma zatwierdzonych wydatków kategorii z 3 poprzednich miesięcy podzielona przez liczbę tych miesięcy, które zaczęły się nie wcześniej niż pierwszy wydatek portfela. Brak historii oznacza brak znacznika.

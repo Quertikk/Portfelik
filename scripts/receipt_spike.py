@@ -12,13 +12,14 @@ import json
 import mimetypes
 import os
 import sys
+import urllib.error
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import receipts  # noqa: E402
 from receipts import CATEGORIES, SCHEMA  # noqa: E402,F401  (SCHEMA i CATEGORIES sprawdza test)
 
-MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite")
 
 
 def grosze(text):
@@ -27,6 +28,13 @@ def grosze(text):
         return round(float(str(text).lower().replace("zł", "").replace("pln", "").replace(" ", "").replace(",", ".")) * 100)
     except ValueError:
         return None
+
+
+def describe(cause):
+    """Przyczyna błędu z API: dla HTTPError kod i początek odpowiedzi Google (bez klucza)."""
+    if isinstance(cause, urllib.error.HTTPError):
+        return f"HTTP {cause.code}: {cause.read().decode('utf-8', 'replace')[:400]!r}"
+    return repr(cause)
 
 
 def check(result, truth):
@@ -49,6 +57,10 @@ def main(folder, sheet):
             result = json.loads(receipts.gemini(path.read_bytes(), mimetypes.guess_type(path)[0] or "image/jpeg"))
         except (receipts.ReceiptError, json.JSONDecodeError, OSError) as e:
             print(f"{row['plik']}: BŁĄD {e!r}")
+            print(f"    przyczyna: {describe(e.__cause__)}")  # ogólny komunikat ReceiptError ukrywa, co poszło nie tak
+            if getattr(e.__cause__, "code", None) == 429:  # limit zapytań: kolejne próby tylko go zużywają
+                print("Limit zapytań wyczerpany, przerywam. Spróbuj później albo z innym modelem (GEMINI_MODEL).")
+                break
             continue
         ok = check(result, row)
         correct += ok["amount"]

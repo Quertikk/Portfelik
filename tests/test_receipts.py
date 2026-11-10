@@ -168,6 +168,11 @@ def test_gemini_sends_key_in_header_and_returns_text(monkeypatch):
     assert "sekret-klucz" not in seen["url"] and seen["headers"]["X-goog-api-key"] == "sekret-klucz"
 
 
+@pytest.fixture(autouse=True)
+def no_sleep(monkeypatch):
+    monkeypatch.setattr(receipts.time, "sleep", lambda s: None)
+
+
 @pytest.mark.parametrize("failure", [receipts.urllib.error.URLError("brak sieci"), TimeoutError(), ValueError()])
 def test_gemini_network_errors_become_receipt_error(monkeypatch, failure):
     monkeypatch.setenv("GEMINI_API_KEY", "k")
@@ -191,3 +196,50 @@ def test_image_mime():
     assert receipts.image_mime(PNG) == "image/png"
     assert receipts.image_mime(b"\xff\xd8\xff\xdb") == "image/jpeg"
     assert receipts.image_mime(b"GIF89a") is None
+
+
+def http_error(code):
+    return receipts.urllib.error.HTTPError("http://x", code, "err", {}, io.BytesIO(b"{}"))
+
+
+def test_gemini_retries_after_overload(monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "k")
+    answers = [http_error(503), TimeoutError(), FakeResponse(
+        json.dumps({"candidates": [{"content": {"parts": [{"text": "ok"}]}}]}).encode())]
+
+    def urlopen(req, timeout):
+        a = answers.pop(0)
+        if isinstance(a, Exception):
+            raise a
+        return a
+
+    monkeypatch.setattr(receipts.urllib.request, "urlopen", urlopen)
+    assert receipts.gemini(PNG, "image/png") == "ok" and not answers
+
+
+def test_gemini_gives_up_after_three_tries(monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "k")
+    calls = []
+
+    def urlopen(req, timeout):
+        calls.append(1)
+        raise http_error(503)
+
+    monkeypatch.setattr(receipts.urllib.request, "urlopen", urlopen)
+    with pytest.raises(receipts.ReceiptError):
+        receipts.gemini(PNG, "image/png")
+    assert len(calls) == receipts.TRIES
+
+
+def test_gemini_does_not_retry_bad_request(monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "k")
+    calls = []
+
+    def urlopen(req, timeout):
+        calls.append(1)
+        raise http_error(404)
+
+    monkeypatch.setattr(receipts.urllib.request, "urlopen", urlopen)
+    with pytest.raises(receipts.ReceiptError):
+        receipts.gemini(PNG, "image/png")
+    assert len(calls) == 1
