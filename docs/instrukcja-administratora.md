@@ -74,7 +74,7 @@ Klucz sesji musi pozostać ten sam po restarcie, inaczej sesje się zerwą. Klik
 
 ### 4.3. HTTPS
 
-Zakładka Web, sekcja „Security”: włącz „Force HTTPS”. Certyfikat dla `*.pythonanywhere.com` jest w cenie konta.
+Zakładka Web, sekcja „Security”: włącz „Force HTTPS”. Certyfikat dla `*.pythonanywhere.com` jest w cenie konta. Ciasteczko sesji ma flagę `Secure`, więc bez HTTPS logowanie nie zadziała: przeglądarka nie odeśle ciasteczka przez zwykłe http.
 
 ### 4.4. Dostęp do API modelu AI
 
@@ -114,7 +114,7 @@ Przed każdym wdrożeniem uruchom to samo polecenie ręcznie.
 2. W konsoli: `cp ~/backups/portfelik-<data>.db ~/Portfelik/portfelik.db`.
 3. Zakładka Web: „Enable” i „Reload”.
 
-Przywrócenie nadpisuje bieżące dane danymi z kopii, więc wcześniej zrób kopię aktualnej bazy. Próba przywrócenia została wykonana 10.11.2026 (TC-NF11-03).
+Przywrócenie nadpisuje bieżące dane danymi z kopii, więc wcześniej zrób kopię aktualnej bazy. Próbę przywrócenia wykonano 10.11.2026 (TC-NF11-03).
 
 ## 6. Aktualizacja do nowej wersji
 
@@ -150,4 +150,6 @@ Test dymny po wdrożeniu: zaloguj się, dodaj wydatek, kliknij „Reload” w za
 | HTTP 404 „model is no longer available” (widać w `scripts/receipt_spike.py`) | Google wycofał model. Ustaw nowy w zmiennej `GEMINI_MODEL` (nazwa z komunikatu błędu lub z AI Studio) i kliknij „Reload”. Domyślny model to `gemini-3.5-flash-lite` |
 | Aplikacja nie startuje po aktualizacji | Zakładka Web, link „Error log”; zwykle brakuje pakietu: `pip install -r requirements.txt` |
 | `OperationalError: database is locked` | Dwa procesy zapisują naraz. SQLite wystarcza dla małej grupy użytkowników; przy dużym ruchu przejdź na PostgreSQL |
+| Po zalogowaniu strona wraca do logowania | Adres zaczyna się od `http://`. Wejdź przez `https://` i włącz „Force HTTPS” (punkt 4.3) |
+| Logowanie zwraca 429 | Ponad 10 nieudanych prób na jeden e-mail w 15 minut. Poczekaj albo kliknij „Reload”, bo liczniki są w pamięci procesu |
 | Stara baza bez haseł (sprzed F6) | Usuń `portfelik.db`, bo konta z wersji 0.1 nie mają haseł |

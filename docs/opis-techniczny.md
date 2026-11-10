@@ -1,16 +1,17 @@
 # Opis techniczny
 
-Stan po sprincie 3. Instalacja i wdrożenie: [instrukcja-administratora.md](instrukcja-administratora.md). Architektura i model danych: [specyfikacja](specyfikacja.md#4-architektura), diagramy: [uml.md](uml.md).
+Stan z 10.11.2026 (sprint 3). Instalacja i wdrożenie: [instrukcja-administratora.md](instrukcja-administratora.md). Architektura i model danych: [specyfikacja](specyfikacja.md#4-architektura), diagramy: [uml.md](uml.md).
 
 ## Pliki
 
 | Plik | Zawartość |
 |---|---|
-| `app.py` | Aplikacja Flask: konfiguracja, trasy, zapytania do sum, walidacja formularza wydatku, filtr `zl` |
+| `app.py` | Aplikacja Flask: konfiguracja, trasy, zapytania do sum, walidacja formularza wydatku, filtry `zl` i `amount`, nagłówki bezpieczeństwa |
 | `auth.py` | Blueprint: `/rejestracja`, `/logowanie`, `/wyloguj`; hasła przez `werkzeug.security` |
-| `budget.py` | Logika bez Flaska i bazy, na groszach: `limit_state`, `saver_mode` (F10), `average` (F12), `due_soon` (F13), `settle` (F17), `month_done`, `achievements`, `PENALTIES` (F14, F15) |
+| `budget.py` | Logika bez Flaska i bazy, na groszach: `parse_amount`, `limit_state`, `saver_mode` (F10), `average` (F12), `due_soon` (F13), `settle` (F17), `month_done`, `achievements`, `PENALTIES` (F14, F15) |
 | `receipts.py` | Odczyt paragonu (F11): `read_receipt(bajty, mime)`, dostawca Gemini w `PROVIDERS`, rozpoznanie JPG/PNG po zawartości |
 | `db.py` | Schemat jako lista `MIGRATIONS` (wersja w `PRAGMA user_version`), kategorie, dane demonstracyjne |
+| `throttle.py` | Limit prób w oknie czasu, w pamięci procesu (logowanie, odczyt paragonu) |
 | `wsgi.py` | Punkt wejścia na serwerze |
 | `scripts/backup_db.py` | Kopia bazy z rotacją 14 kopii |
 | `scripts/receipt_spike.py` | Próbka F11: porównanie odczytu modelu z arkuszem `prawda.csv` |
@@ -18,6 +19,7 @@ Stan po sprincie 3. Instalacja i wdrożenie: [instrukcja-administratora.md](inst
 | `start.bat` | Uruchomienie lokalne na Windows: instalacja zależności, przeglądarka, `python app.py` |
 | `templates/` | `base.html` (nagłówek, baner subskrypcji), `wallet.html`, `edit.html`, `subscriptions.html`, `login.html`, `register.html` |
 | `static/style.css` | Style; układ mobilny w `@media (max-width: 700px)` |
+| `static/app.js` | Potwierdzenie usunięcia i zaznaczanie linku zaproszenia (atrybuty `data-confirm`, `data-select`) |
 | `tests/` | Testy `pytest`; `conftest.py` daje tymczasową bazę i zalogowanego klienta |
 
 ## Trasy
@@ -48,7 +50,7 @@ SQLite, jeden plik `portfelik.db`. Schemat to lista `MIGRATIONS` w `db.py` stoso
 | `categories` | `id`, `name` (UNIQUE), `icon` | 8 stałych kategorii z `db.CATEGORIES` |
 | `expenses` | `wallet_id`, `user_id`, `category_id`, `amount` (>0), `description`, `comment`, `spent_on`, `status`, `decided_by`, `decided_at`, `created_at` | `status`: `pending`, `approved`, `rejected` |
 | `category_limits` | `wallet_id`, `category_id`, `amount` | Limit miesięczny kategorii w portfelu |
-| `invitations` | `wallet_id`, `code`, `expires_at` | Kod z `secrets.token_urlsafe`, ważny 7 dni |
+| `invitations` | `wallet_id`, `code`, `expires_at` | Kod z `secrets.token_urlsafe`, ważny 7 dni; nowy link kasuje poprzednie |
 | `subscriptions` | `user_id`, `name`, `amount`, `day_of_month` (1–31) | Prywatne dla użytkownika |
 | `piggy_deposits` | `wallet_id`, `month` (`RRRR-MM`), `amount` (>0) | Klucz złożony: jedno przeniesienie na portfel i miesiąc; saldo skarbonki to suma. Osiągnięcia i kary nie mają tabeli, liczą się przy każdym otwarciu portfela |
 
@@ -78,14 +80,17 @@ Migracje: 1 schemat początkowy, 2 logowanie (e-mail, hasło), 3 zaproszenia, 4 
 ## Bezpieczeństwo
 
 - **Hasła i sesje:** skrót hasła, minimum 8 znaków, ten sam komunikat dla złego e-maila i złego hasła, nowa sesja po zalogowaniu. Ciasteczko sesji ma `HttpOnly` i `SameSite=Lax`. `SECRET_KEY` pochodzi ze środowiska.
-- **CSRF:** `CSRFProtect` obejmuje każdy formularz POST (`{{ csrf_token() }}`).
+- **Ataki na logowanie:** po 10 nieudanych próbach na adres e-mail w 15 minut logowanie zwraca 429 (`throttle.py`, licznik w pamięci procesu). Skrót hasła liczy się także dla nieznanego e-maila, żeby czas odpowiedzi nie zdradzał istnienia konta. Hasło ma od 8 do 128 znaków. Ciasteczko sesji ma też `Secure` (tryb deweloperski przez http je wyłącza). Nowy link zaproszenia unieważnia poprzednie.
+- **Nagłówki:** `Content-Security-Policy` (skrypty tylko z własnej domeny, bez inline JS: potwierdzenia i zaznaczanie linku robi `static/app.js` z atrybutów `data-confirm`, `data-select`), `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: same-origin`, `Cache-Control: no-store` dla stron z danymi.
+- **Koszt klucza API:** odczyt paragonu ma limit 20 na godzinę na użytkownika i 200 łącznie, bo rejestracja jest otwarta.
+- **CSRF:** `CSRFProtect` obejmuje każdy formularz POST (`{{ csrf_token() }}`); token ważny tyle co sesja.
 - **Uprawnienia (NF4):** każdy dostęp do portfela przechodzi przez `get_wallet`, a obcy portfel daje 404, jakby nie istniał. Zatwierdzanie sprawdza członkostwo i to, że decyduje ktoś inny niż autor. Edycja i usuwanie wydatku tylko dla autora. Próg i limity tylko dla właściciela portfela (403).
-- **Dane wejściowe:** `parse_amount` odrzuca `0`, liczby ujemne, `inf`, `nan` i `1e999`. Przekierowanie po logowaniu (`next`) tylko w obrębie aplikacji (`safe_next`). Zapytania SQL są parametryzowane, szablony Jinja2 escapują HTML.
+- **Dane wejściowe:** `parse_amount` odrzuca `0`, liczby ujemne, `inf`, `nan` i `1e999`. Przekierowanie po logowaniu (`next`) tylko w obrębie aplikacji (`safe_next` odrzuca też znaki sterujące). Zapytania SQL są parametryzowane, szablony Jinja2 escapują HTML.
 - **Paragon:** typ pliku po pierwszych bajtach, limit 5 MB, zdjęcie tylko w pamięci, klucz API tylko ze środowiska (NF6, NF9).
 
 ## Testy i jakość
 
-`pytest` (232 testy, ok. 25 s) uruchamia się lokalnie i w GitHub Actions. `tests/conftest.py` podmienia `db.DB_PATH` na bazę tymczasową, więc testy nie dotykają `portfelik.db`. Pokrycie linii mierzone narzędziem `coverage`: `budget.py`, `receipts.py` i `auth.py` 100%, `app.py` 98%, `db.py` 98%. Scenariusze opisuje [testy.md](testy.md).
+`pytest` (262 testy, ok. 25 s) uruchamia się lokalnie i w GitHub Actions. `tests/conftest.py` podmienia `db.DB_PATH` na bazę tymczasową, więc testy nie dotykają `portfelik.db`. Pokrycie linii mierzone narzędziem `coverage`: `budget.py`, `receipts.py` i `auth.py` 100%, `app.py` 98%, `db.py` 98%. Scenariusze opisuje [testy.md](testy.md).
 
 ## Wydajność (NF7)
 

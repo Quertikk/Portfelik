@@ -6,19 +6,21 @@ Portfelik to aplikacja do prowadzenia budżetu osobistego i wspólnych wydatków
 
 ## Konto
 
-Na stronie `/rejestracja` podaj nazwę, e-mail i hasło (co najmniej 8 znaków). Po zalogowaniu widzisz swój portfel osobisty. Przycisk „Wyloguj” jest w prawym górnym rogu. 
+Na stronie `/rejestracja` podaj nazwę, e-mail i hasło (co najmniej 8 znaków). Po zalogowaniu widzisz swój portfel osobisty. Przycisk „Wyloguj” jest w prawym górnym rogu.
 
 ![Logowanie](img/logowanie.png)
 
 ![Rejestracja](img/rejestracja.png)
 
-Gdy podasz złe dane logowania, aplikacja pokaże ten sam komunikat niezależnie od tego, czy zły jest e-mail, czy hasło. Hasła nie da się odzyskać przez e-mail, więc zapamiętaj je albo zapisz w menedżerze haseł.
+Gdy podasz złe dane logowania, aplikacja pokaże ten sam komunikat niezależnie od tego, czy zły jest e-mail, czy hasło. Hasła nie da się odzyskać przez e-mail, więc zapamiętaj je albo zapisz w menedżerze haseł. Po 10 nieudanych próbach logowania na ten sam adres e-mail logowanie blokuje się na kilkanaście minut.
 
 ## Portfele
 
 Zakładki nad podsumowaniem przełączają portfel osobisty i wspólne. 
 
-![Portfel wspólny: podsumowanie, kategorie, rozliczenie, zaproszenie, zatwierdzanie](img/portfel-wspolny.png) „+ Nowy wspólny portfel” tworzy portfel, a „Utwórz link zaproszenia” daje adres, który wysyłasz współlokatorom. Link działa 7 dni.
+„+ Nowy wspólny portfel” tworzy portfel, a „Utwórz link zaproszenia” daje adres, który wysyłasz współlokatorom. Link działa 7 dni, a nowy link unieważnia poprzedni.
+
+![Portfel wspólny: podsumowanie, kategorie, rozliczenie, zaproszenie, zatwierdzanie](img/portfel-wspolny.png)
 
 ## Dodawanie wydatku
 
@@ -61,7 +63,11 @@ Karta „Osiągnięcia” pokazuje cztery odznaki: Pierwszy krok, Zaplanowany bu
 
 ## Subskrypcje
 
-Menu „Subskrypcje” (obok nazwy użytkownika) pokazuje listę z sumą miesięczną. ![Subskrypcje](img/subskrypcje.png) Dodaj nazwę, kwotę i dzień płatności. Na 2 dni przed płatnością, a także w dniu płatności, na górze strony pojawia się przypomnienie. Dzień 31 w miesiącu krótszym oznacza ostatni dzień tego miesiąca.
+Menu „Subskrypcje” (obok nazwy użytkownika) pokazuje listę z sumą miesięczną.
+
+![Subskrypcje](img/subskrypcje.png)
+
+Dodaj nazwę, kwotę i dzień płatności. Na 2 dni przed płatnością, a także w dniu płatności, na górze strony pojawia się przypomnienie. Dzień 31 w miesiącu krótszym oznacza ostatni dzień tego miesiąca.
 
 ## Eksport do Excela
 
@@ -71,8 +77,9 @@ Odnośnik „Pobierz CSV” przy liście wydatków pobiera wydatki wybranego mie
 
 | Problem | Co zrobić |
 |---|---|
-| Link zaproszenia nie działa | Zaproszenie wygasa po 7 dniach. Poproś właściciela portfela o nowy link |
+| Link zaproszenia nie działa | Zaproszenie wygasa po 7 dniach, a nowy link zastępuje stary. Poproś o aktualny link |
 | „Nie udało się odczytać kwoty” przy paragonie | Wpisz kwotę ręcznie; pozostałe pola są już wypełnione. Pomaga ostre zdjęcie całego paragonu |
+| „Za dużo odczytów paragonów” | Limit to 20 odczytów na godzinę. Wpisz wydatek ręcznie albo spróbuj później |
 | „Plik jest za duży” | Zdjęcie paragonu może mieć najwyżej 5 MB. Zmniejsz je lub zrób nowe w niższej rozdzielczości |
 | Wydatek nie wchodzi do sumy | Prawdopodobnie czeka na zatwierdzenie (status „oczekuje”) albo został odrzucony |
 | Nie widzę przycisków „Zatwierdź” i „Odrzuć” | Własnych wydatków nie zatwierdzasz. Zrobi to inny członek portfela |

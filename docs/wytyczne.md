@@ -15,7 +15,7 @@ Sprawdzone punkt po punkcie 10.11.2026 na podstawie repozytorium. Źródło list
 | 9 | Działający system | Aplikacja na serwerze PythonAnywhere | Do dokończenia: wdrożyć ostatnią wersję, wykonać test dymny (rejestracja, dodanie wydatku, restart), ustawić `GEMINI_API_KEY` i zaliczyć test akceptacyjny F11 |
 | 10 | Koncepcja tworzenia oprogramowania | [koncepcja.md](koncepcja.md), sekcja 7 | Gotowe |
 | 11 | Napisane kody | Repozytorium GitHub | Do dokończenia: zmiany sprintów 1–3 są jeszcze niezatwierdzone w repozytorium. Trzeba je zacommitować, wypchnąć i scalić do `main` Pull Requestem z recenzją |
-| 12 | Scenariusze testowe | [testy.md](testy.md) | Gotowe; ręcznie do wykonania: TC-F11-08, TC-F18-05, TC-NF3-01, TC-NF5-01 |
+| 12 | Scenariusze testowe | [testy.md](testy.md) | Gotowe; ręcznie do wykonania: TC-F11-08 (część na serwerze, lokalnie zaliczony), TC-F18-05, TC-NF3-01, TC-NF5-01 |
 | 13 | Instrukcja użytkownika | [instrukcja-uzytkownika.md](instrukcja-uzytkownika.md) | Gotowe: tekst i 6 zrzutów ekranu w `docs/img/`; Daria może dopisać wynik testu użyteczności (TC-NF5-01) |
 | 14 | Instrukcja administratora | [instrukcja-administratora.md](instrukcja-administratora.md) | Gotowe |
 | 15 | Opis powykonawczy | [opis-techniczny.md](opis-techniczny.md) | Gotowe |

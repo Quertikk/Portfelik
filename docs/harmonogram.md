@@ -1,6 +1,6 @@
 # Harmonogram i podział prac
 
-Pracujemy w sprintach dwutygodniowych (zgodnie z modyfikacją metody Scrum przyjętą na zajęciach). Co tydzień, w czwartek, odbywa się spotkanie z prowadzącym podsumowujące prace.
+Pracujemy w sprintach dwutygodniowych (zgodnie z modyfikacją metody Scrum przyjętą na zajęciach). Co tydzień, w piątek, odbywa się spotkanie z prowadzącym podsumowujące prace.
 
 | Sprint | Termin | Cel |
 |---|---|---|
@@ -89,7 +89,7 @@ gantt
 
 ## Macierz RAM
 
-**R** – odpowiedzialny, **C** – konsultowany, **I** – informowany.
+R: odpowiedzialny, C: konsultowany, I: informowany.
 
 | Zadanie | Valentyn | Daria | Filip |
 |---|---|---|---|

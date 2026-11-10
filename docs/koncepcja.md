@@ -37,10 +37,10 @@ Kolejność realizacji i szacunki znajdują się w [backlog.md](backlog.md).
 
 ## 5. Rola AI
 
-AI wykonuje w aplikacji realną pracę, której użytkownik inaczej musiałby dokonać ręcznie:
+AI przejmuje pracę, którą użytkownik inaczej musiałby wykonać ręcznie:
 
 1. **Rozpoznawanie paragonu:** zdjęcie paragonu jest wysyłane do modelu AI, który zwraca kwotę, datę, nazwę sklepu i proponowaną kategorię. Użytkownik tylko sprawdza i zatwierdza.
-2. **Podsumowanie miesiąca (opcjonalnie):** krótki opis słowny, gdzie wydano więcej niż zwykle i co można ograniczyć.
+2. **Podsumowanie miesiąca (opcjonalnie, nie zrealizowane, poza backlogiem):** krótki opis słowny, gdzie wydano więcej niż zwykle i co można ograniczyć.
 
 ## 6. Ograniczenia
 

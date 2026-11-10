@@ -1,6 +1,6 @@
 # Dziennik postępów
 
-Po każdym spotkaniu dopisujemy: co zostało zrobione (kto co zrobił), jakie były problemy i plan na kolejny tydzień.
+Po każdym spotkaniu dopisujemy: co zrobiono (kto co zrobił), jakie były problemy i plan na kolejny tydzień. Na końcu sprintu dochodzi przegląd (co pokazaliśmy Właścicielowi produktu i jakie dał uwagi) oraz retrospektywa: co poszło dobrze, co poprawić, a każde działanie ma osobę, termin i warunek ukończenia.
 
 ---
 
@@ -10,7 +10,7 @@ Po każdym spotkaniu dopisujemy: co zostało zrobione (kto co zrobił), jakie by
 
 | Osoba | Wykonane prace |
 |---|---|
-| Valentyn (Lider) | Uzgodnienie zmiany tematu, organizacja zespołu w nowym składzie i podział ról, wybór technologii, przygotowanie repozytorium, pierwsza wersja aplikacji (z pomocą Claude) |
+| Valentyn (Scrum Master) | Uzgodnienie zmiany tematu, organizacja zespołu w nowym składzie i podział ról, wybór technologii, przygotowanie repozytorium, pierwsza wersja aplikacji (z pomocą Claude) |
 | Daria (Właściciel produktu) | Koncepcja funkcji aplikacji (portfele, zatwierdzanie wydatków, limity, skarbonka, subskrypcje, grywalizacja), ustalenie priorytetów w backlogu |
 | Filip (Zespół) | Dołączenie do zespołu, zapoznanie się z koncepcją, przegląd pierwszej wersji interfejsu, zgłoszenie dwóch błędów (uruchomienie na Windows, widok na telefonie) |
 

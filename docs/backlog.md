@@ -1,8 +1,8 @@
-# Zaległości produktowe (product backlog)
+# Backlog produktu
 
 Lista wymagań z priorytetami i szacowanym czasem realizacji w dniach pracy. Priorytety ustala Właściciel produktu (Daria). Lista jest aktualizowana po każdym spotkaniu.
 
-**Priorytet:** W – wysoki, Ś – średni, N – niski.
+Priorytet: W (wysoki), Ś (średni), N (niski).
 
 ## Wymagania funkcjonalne
 
@@ -36,7 +36,7 @@ Lista wymagań z priorytetami i szacowanym czasem realizacji w dniach pracy. Pri
 | NF2 | Kwoty przechowywane w groszach (bez błędów zaokrągleń) | W | 0 | Zrobione |
 | NF3 | Uruchomienie aplikacji jednym plikiem (`start.bat`) | Ś | 0 | Zrobione |
 | NF4 | Hasła przechowywane jako skrót (hash); użytkownik widzi tylko swoje portfele | W | 1 | Zrobione, czeka na review |
-| NF8 | Bezpieczeństwo aplikacji: `secret_key` ze zmiennej środowiskowej, ochrona CSRF, ciasteczka sesji z `HttpOnly` i `SameSite` | W | 0 | Zrobione |
+| NF8 | Bezpieczeństwo aplikacji: `secret_key` ze zmiennej środowiskowej, ochrona CSRF, ciasteczka sesji z `HttpOnly`, `SameSite` i `Secure`, nagłówki bezpieczeństwa, limit prób logowania i odczytów paragonu | W | 0 | Zrobione |
 | NF5 | Dodanie wydatku zajmuje maksymalnie 3 kliknięcia od strony głównej | Ś | 1 | Formularz na stronie głównej; test użyteczności na 2 osobach do wykonania |
 | NF6 | Zdjęcie paragonu nie jest przechowywane dłużej niż potrzeba do odczytu | Ś | 2 | Zrobione, czeka na review |
 | NF9 | Klucz API modelu AI tylko w zmiennej środowiskowej; informacja o wysyłce obrazu do zewnętrznego modelu | W | 2 | Zrobione, czeka na review |

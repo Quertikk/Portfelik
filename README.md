@@ -8,7 +8,7 @@ Projekt zespołowy, Uniwersytet im. Adama Mickiewicza w Poznaniu, 2026/2027.
 
 | Osoba | Rola w Scrum | Zakres |
 |---|---|---|
-| Valentyn | Lider (ScrumMaster) | Organizacja pracy, kontakt z prowadzącym, backlog sprintu, architektura aplikacji i baza danych |
+| Valentyn | Scrum Master | Organizacja pracy, kontakt z prowadzącym, backlog sprintu, architektura aplikacji i baza danych |
 | Daria | Właściciel produktu | Wymagania i ich priorytety, koncepcja funkcji, akceptacja wykonanych zadań, instrukcja użytkownika |
 | Filip Kellner | Zespół | Logowanie i wdrożenie na serwer, testy, scenariusze testowe, opis techniczny |
 
@@ -17,7 +17,7 @@ Projekt zespołowy, Uniwersytet im. Adama Mickiewicza w Poznaniu, 2026/2027.
 | Narzędzie | Zastosowanie |
 |---|---|
 | Claude (Anthropic) | Asystent programisty: kod aplikacji, pomoc przy dokumentacji technicznej |
-| Gemini (Google) | Grafiki i prezentacje; planowany model do rozpoznawania paragonów |
+| Gemini (Google) | Grafiki i prezentacje; model do rozpoznawania paragonów (F11) |
 
 Za wynik pracy narzędzi AI odpowiadają członkowie zespołu: wygenerowany kod jest przeglądany i testowany przed włączeniem do projektu.
 
@@ -60,12 +60,13 @@ app.py            serwer i obsługa stron
 auth.py           rejestracja, logowanie i wylogowanie
 budget.py         limity, tryb Oszczędny, średnia, subskrypcje, rozliczenie
 receipts.py       odczyt paragonu przez model AI (Gemini)
+throttle.py       limit prób (logowanie, odczyt paragonu)
 wsgi.py           punkt wejścia na serwerze (WSGI)
 scripts/          kopia bazy (backup_db.py), próbka paragonów (receipt_spike.py), pomiar wydajności (perf_check.py)
 db.py             migracje bazy danych i dane demonstracyjne
 tests/            testy automatyczne (pytest)
 templates/        szablony stron (HTML)
-static/           style (CSS)
+static/           style (CSS) i app.js (potwierdzenia usunięcia)
 docs/             dokumentacja projektu
 start.bat         uruchomienie na Windows
 requirements.txt  zależności Pythona
@@ -77,7 +78,7 @@ requirements.txt  zależności Pythona
 |---|---|
 | [docs/koncepcja.md](docs/koncepcja.md) | Koncepcja, cele, zakres, ograniczenia |
 | [docs/specyfikacja.md](docs/specyfikacja.md) | Specyfikacja wymagań: kryteria akceptacji, architektura |
-| [docs/backlog.md](docs/backlog.md) | Zaległości produktowe: wymagania funkcjonalne i niefunkcjonalne, priorytety, szacunki |
+| [docs/backlog.md](docs/backlog.md) | Backlog produktu: wymagania funkcjonalne i niefunkcjonalne, priorytety, szacunki |
 | [docs/harmonogram.md](docs/harmonogram.md) | Sprinty, wykres Gantta, podział prac (WBS), macierz RAM |
 | [docs/postepy.md](docs/postepy.md) | Dziennik postępów z cotygodniowych spotkań |
 | [docs/testy.md](docs/testy.md) | Scenariusze testowe z odwołaniem do testów automatycznych |
@@ -97,8 +98,8 @@ Sprinty 0–2 zakończone, sprint 3 (jakość i dokumentacja) w toku, zamrożeni
 | Konta i portfele | Rejestracja, logowanie, portfel osobisty i wspólny z zaproszeniami (F6, F7) |
 | Wydatki | Dodawanie, edycja, komentarz, usuwanie, zatwierdzanie powyżej progu, limity i tryb Oszczędny (F1–F5, F8–F10, F19) |
 | Analiza | Podsumowanie miesiąca, średnia z 3 miesięcy, rozliczenie, eksport CSV (F3, F12, F17, F18) |
-| AI | Dodanie wydatku ze zdjęcia paragonu przez Gemini (F11); test akceptacyjny 8 z 10 paragonów jeszcze do wykonania |
+| AI | Dodanie wydatku ze zdjęcia paragonu przez Gemini (F11); test akceptacyjny zaliczony: 9 z 10 kwot (cel: 8 z 10) |
 | Subskrypcje | Lista z przypomnieniem 2 dni przed płatnością (F13) |
 | Oszczędzanie i grywalizacja | Wirtualna skarbonka z propozycją przeniesienia na koniec miesiąca, osiągnięcia i żartobliwe kary za przekroczone limity (F14, F15) |
 | Nie zrobione | Telegram (F16): poza zakresem |
-| Jakość | 244 testy automatyczne, pokrycie `app.py`, `auth.py`, `budget.py`, `receipts.py` powyżej 95%, ładowanie portfela z 1000 wydatków w ok. 30 ms |
+| Jakość | 262 testy automatyczne, pokrycie `app.py`, `auth.py`, `budget.py`, `receipts.py` powyżej 95%, ładowanie portfela z 1000 wydatków w ok. 30 ms |
