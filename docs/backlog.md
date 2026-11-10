@@ -24,8 +24,8 @@ Lista wymagań z priorytetami i szacowanym czasem realizacji w dniach pracy. Pri
 | F13 | Menedżer subskrypcji z przypomnieniem 2 dni przed płatnością | Ś | 1,5 | 2 | Zrobione, czeka na review |
 | F17 | Rozliczenie we wspólnym portfelu: równy podział, salda, przelewy wyrównujące | Ś | 1 | 2 | Zrobione, czeka na review |
 | F18 | Eksport wydatków miesiąca do CSV (UTF-8 z BOM, ochrona przed formułami) | Ś | 0,5 | 2 | Zrobione, czeka na review |
-| F14 | Skarbonka z zaokrąglaniem wydatków i przenoszeniem niewydanych środków | N | 1 | 3 | Do zrobienia |
-| F15 | Osiągnięcia i „kary” za przekroczenie limitów | N | 1,5 | 3 | Do zrobienia |
+| F14 | Skarbonka z zaokrąglaniem wydatków i przenoszeniem niewydanych środków | N | 1 | 3 | Zrobione |
+| F15 | Osiągnięcia i „kary” za przekroczenie limitów | N | 1,5 | 3 | Zrobione |
 | F16 | Powiadomienia przez Telegram | N | 2 | – | Poza zakresem (jeśli zostanie czas) |
 
 ## Wymagania niefunkcjonalne

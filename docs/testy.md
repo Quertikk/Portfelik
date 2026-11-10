@@ -168,4 +168,15 @@ Testy automatyczne używają atrapy modelu, więc nie wysyłają zdjęć do siec
 | TC-NF9-01 | Klucz API i informacja o modelu zewnętrznym | Patrz TC-F11-07 | – | Klucz tylko ze środowiska, przy formularzu informacja o wysyłce obrazu | `test_receipts.py::test_missing_api_key_gives_message`, `test_upload_form_warns_about_external_model` |
 | TC-NF10-01 | Testy w jednym poleceniu i w CI | Uruchom `pytest`; otwórz Pull Request | – | Wszystkie testy przechodzą lokalnie i w GitHub Actions (`.github/workflows/tests.yml`) | Sam zestaw `tests/` |
 
-Funkcje F14 (Skarbonka) i F15 (Osiągnięcia) mają priorytet niski i nie zostały zaimplementowane, więc nie mają scenariuszy. F16 (Telegram) jest poza zakresem.
+## F14 Skarbonka i F15 Osiągnięcia
+
+| ID | Scenariusz | Kroki | Dane | Oczekiwany wynik | Test |
+|---|---|---|---|---|---|
+| TC-F14-01 | Przeniesienie raz na miesiąc | Otwórz zakończony miesiąc, kliknij „Przenieś do skarbonki” dwa razy | Wydatki 12,50 i 10,00 zł w kategorii z limitem 100 zł | Propozycja 78,00 zł (zaokrąglenie 0,50 + niewydane 77,50); jeden zapis, drugie kliknięcie daje komunikat; saldo widać w bieżącym miesiącu | `test_gamification.py::test_piggy_moves_roundups_and_unspent_limits_once` |
+| TC-F14-02 | Nic do przeniesienia | Przenieś miesiąc z przekroczonym limitem i pełnymi złotymi | Wydatek 50 zł, limit 30 zł | Komunikat, brak zapisu | `test_gamification.py::test_piggy_nothing_to_move_when_limit_overspent` |
+| TC-F14-03 | Miesiąc niezakończony | Wyślij przeniesienie dla przyszłego miesiąca | – | Komunikat, brak zapisu | `test_gamification.py::test_piggy_refuses_unfinished_month`, `test_month_done` |
+| TC-F14-04 | Uprawnienia | Jako Filip wyślij przeniesienie do portfela Darii | – | 404 | `test_gamification.py::test_piggy_only_for_wallet_member` |
+| TC-F15-01 | Co najmniej 3 osiągnięcia | Otwórz portfel z danymi demo, potem po czystym miesiącu z 3 limitami i skarbonką | – | „Pierwszy krok” zdobyty, „Skarbnik” zablokowany; później wszystkie 4 zdobyte, bez kary | `test_gamification.py::test_first_achievement_earned_with_demo_expense`, `test_all_achievements_after_clean_month_with_piggy`, `test_achievements_earned_flags` |
+| TC-F15-02 | Wirtualna kara | Ustaw limit niższy niż wydatki kategorii | Zakupy 199 zł, limit 100 zł | Komunikat „Wirtualna kara” przy kategorii, bez żadnej płatności | `test_gamification.py::test_virtual_penalty_for_exceeded_limit` |
+
+F16 (Telegram) jest poza zakresem.

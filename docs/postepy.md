@@ -62,5 +62,5 @@ Dziesięć zdjęć prawdziwych paragonów (BUDMED, stacje ANWIM/Moya i ORLEN, Li
 ### Do zrobienia
 
 - Uruchomić próbkę na serwerze PythonAnywhere (klucz w pliku WSGI, dostęp do `generativelanguage.googleapis.com`).
-- Ustalić limit kosztów. Na darmowym planie koszt wynosi 0, ale limit dzienny jest niski. Płatne rozliczenia (billing) to decyzja zespołu.
+- ~~Ustalić limit kosztów.~~ Decyzja 10.11.2026: model Gemini 3.5 Flash-Lite, darmowy plan (koszt 0, limit dzienny wystarcza), bez płatnych rozliczeń.
 

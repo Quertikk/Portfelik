@@ -8,7 +8,7 @@ Stan po sprincie 3. Instalacja i wdrożenie: [instrukcja-administratora.md](inst
 |---|---|
 | `app.py` | Aplikacja Flask: konfiguracja, trasy, zapytania do sum, walidacja formularza wydatku, filtr `zl` |
 | `auth.py` | Blueprint: `/rejestracja`, `/logowanie`, `/wyloguj`; hasła przez `werkzeug.security` |
-| `budget.py` | Logika bez Flaska i bazy, na groszach: `limit_state`, `saver_mode` (F10), `average` (F12), `due_soon` (F13), `settle` (F17) |
+| `budget.py` | Logika bez Flaska i bazy, na groszach: `limit_state`, `saver_mode` (F10), `average` (F12), `due_soon` (F13), `settle` (F17), `month_done`, `achievements`, `PENALTIES` (F14, F15) |
 | `receipts.py` | Odczyt paragonu (F11): `read_receipt(bajty, mime)`, dostawca Gemini w `PROVIDERS`, rozpoznanie JPG/PNG po zawartości |
 | `db.py` | Schemat jako lista `MIGRATIONS` (wersja w `PRAGMA user_version`), kategorie, dane demonstracyjne |
 | `wsgi.py` | Punkt wejścia na serwerze |
@@ -50,8 +50,9 @@ SQLite, jeden plik `portfelik.db`. Schemat to lista `MIGRATIONS` w `db.py` stoso
 | `category_limits` | `wallet_id`, `category_id`, `amount` | Limit miesięczny kategorii w portfelu |
 | `invitations` | `wallet_id`, `code`, `expires_at` | Kod z `secrets.token_urlsafe`, ważny 7 dni |
 | `subscriptions` | `user_id`, `name`, `amount`, `day_of_month` (1–31) | Prywatne dla użytkownika |
+| `piggy_deposits` | `wallet_id`, `month` (`RRRR-MM`), `amount` (>0) | Klucz złożony: jedno przeniesienie na portfel i miesiąc; saldo skarbonki to suma. Osiągnięcia i kary nie mają tabeli, liczą się przy każdym otwarciu portfela |
 
-Migracje: 1 schemat początkowy, 2 logowanie (e-mail, hasło), 3 zaproszenia, 4 zatwierdzanie, 5 limity, 6 komentarz, 7 subskrypcje.
+Migracje: 1 schemat początkowy, 2 logowanie (e-mail, hasło), 3 zaproszenia, 4 zatwierdzanie, 5 limity, 6 komentarz, 7 subskrypcje, 8 skarbonka.
 
 ## Zmienne środowiskowe
 

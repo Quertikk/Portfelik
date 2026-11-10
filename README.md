@@ -99,5 +99,6 @@ Sprinty 0–2 zakończone, sprint 3 (jakość i dokumentacja) w toku, zamrożeni
 | Analiza | Podsumowanie miesiąca, średnia z 3 miesięcy, rozliczenie, eksport CSV (F3, F12, F17, F18) |
 | AI | Dodanie wydatku ze zdjęcia paragonu przez Gemini (F11); test akceptacyjny 8 z 10 paragonów jeszcze do wykonania |
 | Subskrypcje | Lista z przypomnieniem 2 dni przed płatnością (F13) |
-| Nie zrobione | Skarbonka (F14) i osiągnięcia (F15): opcjonalne, niski priorytet; Telegram (F16) poza zakresem |
-| Jakość | 232 testy automatyczne, pokrycie `app.py`, `auth.py`, `budget.py`, `receipts.py` powyżej 95%, ładowanie portfela z 1000 wydatków w ok. 30 ms |
+| Oszczędzanie i grywalizacja | Wirtualna skarbonka z propozycją przeniesienia na koniec miesiąca, osiągnięcia i żartobliwe kary za przekroczone limity (F14, F15) |
+| Nie zrobione | Telegram (F16): poza zakresem |
+| Jakość | 244 testy automatyczne, pokrycie `app.py`, `auth.py`, `budget.py`, `receipts.py` powyżej 95%, ładowanie portfela z 1000 wydatków w ok. 30 ms |

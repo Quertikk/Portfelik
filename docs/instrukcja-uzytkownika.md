@@ -53,6 +53,12 @@ Karta „Według kategorii” pokazuje wydatki miesiąca. Pionowa kreska na pask
 
 Strzałki „‹” i „›” przy nazwie miesiąca zmieniają miesiąc. Wydatki oczekujące i odrzucone nie liczą się do żadnych sum.
 
+## Skarbonka i osiągnięcia
+
+Pod podsumowaniem miesiąca jest wirtualna skarbonka. To zapis w aplikacji, nie przelew. Gdy miesiąc się skończy (albo jest jego ostatni dzień), pojawia się propozycja przeniesienia: zaokrągleń każdego zatwierdzonego wydatku do pełnych złotych oraz niewydanej części limitów kategorii. Przycisk „Przenieś do skarbonki” działa raz na portfel i miesiąc. Wybierz miesiąc strzałkami „‹” i „›”, żeby przenieść poprzedni.
+
+Karta „Osiągnięcia” pokazuje cztery odznaki: Pierwszy krok, Zaplanowany budżet (limity w 3 kategoriach), Pod kontrolą (zakończony miesiąc bez przekroczonego limitu) i Skarbnik (pierwsze przeniesienie do skarbonki). Za przekroczony limit pojawia się żartobliwa, wirtualna kara, np. umycie naczyń po wszystkich. Żadne prawdziwe pieniądze nie są pobierane.
+
 ## Subskrypcje
 
 Menu „Subskrypcje” (obok nazwy użytkownika) pokazuje listę z sumą miesięczną. ![Subskrypcje](img/subskrypcje.png) Dodaj nazwę, kwotę i dzień płatności. Na 2 dni przed płatnością, a także w dniu płatności, na górze strony pojawia się przypomnienie. Dzień 31 w miesiącu krótszym oznacza ostatni dzień tego miesiąca.
