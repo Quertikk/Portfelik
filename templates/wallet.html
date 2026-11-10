@@ -150,14 +150,16 @@
         <td class="num {{ e.status }}">{{ e.amount | zl }}
           {% if e.status == 'pending' %}<span class="status">oczekuje</span>
           {% elif e.status == 'rejected' %}<span class="status">odrzucony</span>{% endif %}</td>
-        <td class="row-actions">
+        <td>
           {% if e.user_id == g.user.id %}
+          <div class="row-actions">
           <a class="link" href="{{ url_for('edit_expense', expense_id=e.id) }}" title="Edytuj" aria-label="Edytuj wydatek">✎</a>
           <form method="post" action="{{ url_for('delete_expense', expense_id=e.id) }}"
                 onsubmit="return confirm('Usunąć ten wydatek?')">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button class="link" title="Usuń" aria-label="Usuń wydatek">✕</button>
           </form>
+          </div>
           {% endif %}
         </td>
       </tr>
